@@ -1,6 +1,6 @@
 # Pulse2Alike
 
-A reproduction inspired by the Waldorf Pulse 2 as a VST3 and Audio Unit instrument.
+A reproduction inspired by the Waldorf Pulse 2 as a VST3 and Audio Unit instrument, and as LV2 for MOD devices.
 
 The analogue parts are modelled from captures of a real Pulse 2: the oscillator wave shapes, the
 filter (LP24 / LP12 / BP12 / HP12), and the drive and VCA. Captures are taken through the instrument's
@@ -45,6 +45,46 @@ tools/do-dcocheck      # offline check of the oscillator law
 ```
 
 The VST3 half needs the VST3 SDK at `~/Documents/vst3sdk` (or `$VST3_SDK`); the Audio Unit needs none.
+
+## LV2, for the MOD Dwarf
+
+The same engine as an LV2 plug-in, headless: a MOD device draws its controls from the ports - every parameter of
+the panel, grouped by its sections - and any Linux LV2 host can load it too. Everything is in `lv2/`; the design
+and the checks are in `Docs/code-notes/p2Lv2.md`.
+
+**Onto a Dwarf.** With the Dwarf on USB:
+
+```
+make -C lv2 publish      # builds build/dwarf/Pulse2Alike.lv2 and installs it on the device at 192.168.51.1
+```
+
+That needs Linux with an aarch64 cross compiler and the LV2 headers (`apt install gcc-aarch64-linux-gnu lv2-dev`);
+the first build fetches the Dwarf's C library (glibc 2.27, Ubuntu 18.04's) into `build/`, so the plug-in loads on the
+device. Without Linux, each push's run of the **LV2** GitHub workflow leaves the same bundle as an artifact:
+
+```
+base64 < Pulse2Alike.lv2-moddwarf.tar.gz | curl -F 'package=@-' http://192.168.51.1/sdk/install
+```
+
+With MOD's own toolchain instead, copy `lv2/mod-plugin-builder/pulse2alike` into mod-plugin-builder's
+`plugins/package/` and run `./build moddwarf-new pulse2alike`.
+
+**Your sounds as presets.** `make -C lv2 publish PRESETS=$HOME/Pulse2/presets.syx` puts Pulse 2 sound dumps into the
+bundle as presets P001-P500 - a `.syx` of one or many dumps, or a folder of `NNN Name.syx`, as Import Presets reads
+them. On the Dwarf a preset list can go on a footswitch or a knob.
+
+**Playing it.** MIDI notes, with pitch bend, the mod wheel, breath, aftertouch and the sustain pedal as the
+instrument takes them; every other control is a port, so MIDI-learn CCs to them on the device. Program changes are
+MOD's (presets, snapshots), not the plug-in's. The arpeggiator follows the device's tempo while its transport rolls.
+The output can pass full scale, as the desktop plug-ins' does: on a Dwarf, keep Master Volume where it does not clip.
+
+**CPU.** Oversampling defaults to 2x here, 4x on the desktop. Estimated - from aarch64 instruction counts on the
+Dwarf's C library, not measured on a device - a plain patch takes about 6-9% of a Dwarf core at 2x and the heaviest
+15-22%; at 4x, 10-38%. Anomalies off costs more, the modulation then running every sample.
+
+**Checking it.** `make -C lv2 check` - the Turtle up to date and valid, the binary, and the plug-in rendering
+bit-identically to the engine driven directly - and `make -C lv2 dwarf-check`, the same for the Dwarf's binary under
+qemu, on its glibc. After changing a parameter: `make -C lv2 ttl`.
 
 ## Licence
 

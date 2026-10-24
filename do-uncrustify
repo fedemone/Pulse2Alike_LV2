@@ -6,7 +6,7 @@
 
 setopt null_glob
 
-for dir in src plugin tools; do
+for dir in src plugin tools lv2 lv2/test; do
     if [[ ! -d $dir ]]; then
         echo "skipping $dir - not found"
         continue

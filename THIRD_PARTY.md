@@ -60,6 +60,23 @@ Cocoa/AppKit, Metal, QuartzCore, libc++, libobjc, libSystem.
 
 ---
 
+## The LV2 bundle (`lv2/`, for MOD devices)
+
+Checked against built binaries (2026-10-24, `lv2/check-binary` and readelf): `Pulse2Alike.so` links only the C
+library of the device it runs on - libc, libm, libpthread and the dynamic linker - and exports `lv2_descriptor`
+alone. It is headless, so it contains **no FreeType** (no panel is built) and **no VST3 SDK**; there is no
+`Read Me First.txt` obligation for either.
+
+| Component | Licence | In the bundle? |
+|---|---|---|
+| **LV2 headers** (lv2plug.in) | ISC | Compiled against (structs, constants, inline helpers); nothing of theirs is linked or shipped |
+| **glibc** | LGPL 2.1+ | Linked **dynamically** against the device's own. `make dwarf` links against Ubuntu 18.04's arm64 glibc 2.27, fetched into `build/` by `lv2/do-glibc-sysroot`; it is used to link and to test under qemu, and never copied into the bundle |
+| **MOD's LV2 vocabulary** (`lv2/test/mod.lv2`, from mod-audio/mod-lv2-extensions) | ISC, MOD Audio UG - `lv2/test/mod.lv2/LICENSE` | No: `make check` validates the Turtle against it |
+
+The bundle's Turtle is generated from this project's own tables and is GPLv3 with the rest.
+
+---
+
 ## SynthLib
 
 `SynthLib/` is a submodule of first-party code under GPLv3 (`SynthLib/LICENSE`), with the licence

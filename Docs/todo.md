@@ -62,6 +62,14 @@ In order (agreed 2026-10-20; the shapes of p2Drive notes §6 are in and sound be
 - Value text in real units (times, rates, semitones) where the laws are measured; the panel shows raw values now, as the instrument does
 - SynthLib: maximise the C and reduce the C++ (CT 2026-10-21) - port src/fileBrowser.cpp, bankBrowser.cpp and prefs.cpp to C; the VST3 wrapper and views stay C++/Obj-C++ as the SDK requires
 
+## LV2 / MOD Dwarf (p2Lv2 notes)
+- Settle the LV2 URI (`P2_LV2_URI`) before the first public bundle - it may never change after (notes §1)
+- Measure the CPU on a real Dwarf: the table in notes §13 is from qemu instruction counts at an assumed IPC; then confirm or change the 2x default
+- Play it on a Dwarf: MIDI from a keyboard, MIDI learn, presets on a footswitch, the arp following MOD's tempo
+- A modgui (MOD's own panel): the main controls as knobs, a screenshot and thumbnail - the default pedal and the settings dialog work without one
+- The arp's steps as editable ports (event, time, glide per step) once there is a step editor - now 16 raw bytes, hidden (notes §4)
+- Pan, once the engine is stereo - a port now, kept with the sound and doing nothing
+
 ## DO NOT RE-TRY
 - Four one-pole stages with LP24 at the end (per-stage poles): worse than the free-mix fit, implausible stage ratios, no HP notch (findings, first linear filter fit)
 - Fitting an engine constant to one take of a patch with detuned oscillators: their slow beat moves a band by up to 10 dB take to take (P006's LEVEL2 depth of 3, reverted)
