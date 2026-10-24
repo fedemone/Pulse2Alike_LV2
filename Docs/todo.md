@@ -63,10 +63,10 @@ In order (agreed 2026-10-20; the shapes of p2Drive notes §6 are in and sound be
 - SynthLib: maximise the C and reduce the C++ (CT 2026-10-21) - port src/fileBrowser.cpp, bankBrowser.cpp and prefs.cpp to C; the VST3 wrapper and views stay C++/Obj-C++ as the SDK requires
 
 ## LV2 / MOD Dwarf (p2Lv2 notes)
-- Settle the LV2 URI (`P2_LV2_URI`) before the first public bundle - it may never change after (notes §1)
 - Measure the CPU on a real Dwarf: the table in notes §13 is from qemu instruction counts at an assumed IPC; then confirm or change the 2x default
 - Play it on a Dwarf: MIDI from a keyboard, MIDI learn, presets on a footswitch, the arp following MOD's tempo
-- A modgui (MOD's own panel): the main controls as knobs, a screenshot and thumbnail - the default pedal and the settings dialog work without one
+- The panel (modgui, notes §16) on a real device: the pages, a knob turned from the Dwarf following on its page, the look on a tablet; MOD OS older than 1.12 shows still pointers
+- Raise `P2_LV2_MINOR_VERSION` to 2 once it has been played on a device, so MOD lists it as stable rather than testing (notes §1)
 - The arp's steps as editable ports (event, time, glide per step) once there is a step editor - now 16 raw bytes, hidden (notes §4)
 - Pan, once the engine is stereo - a port now, kept with the sound and doing nothing
 

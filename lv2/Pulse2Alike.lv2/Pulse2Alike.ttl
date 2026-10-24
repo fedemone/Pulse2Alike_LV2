@@ -388,6 +388,8 @@ It plays MIDI notes, and takes pitch bend, the mod wheel, breath, aftertouch and
         lv2:minimum 0 ;
         lv2:maximum 1 ;
         lv2:portProperty lv2:integer, lv2:toggled ;
+        lv2:scalePoint [ rdfs:label "OFF" ; rdf:value 0 ],
+                       [ rdfs:label "ON" ; rdf:value 1 ] ;
         pg:group <https://github.com/chrispurusha/Pulse2Alike#lv2-group-osc_1> ;
     ], [
         a lv2:InputPort, lv2:ControlPort ;
@@ -410,6 +412,8 @@ It plays MIDI notes, and takes pitch bend, the mod wheel, breath, aftertouch and
         lv2:minimum 0 ;
         lv2:maximum 1 ;
         lv2:portProperty lv2:integer, lv2:toggled ;
+        lv2:scalePoint [ rdfs:label "OFF" ; rdf:value 0 ],
+                       [ rdfs:label "ON" ; rdf:value 1 ] ;
         pg:group <https://github.com/chrispurusha/Pulse2Alike#lv2-group-osc_2> ;
     ], [
         a lv2:InputPort, lv2:ControlPort ;
@@ -476,6 +480,8 @@ It plays MIDI notes, and takes pitch bend, the mod wheel, breath, aftertouch and
         lv2:minimum 0 ;
         lv2:maximum 1 ;
         lv2:portProperty lv2:integer, lv2:toggled ;
+        lv2:scalePoint [ rdfs:label "OFF" ; rdf:value 0 ],
+                       [ rdfs:label "ON" ; rdf:value 1 ] ;
         pg:group <https://github.com/chrispurusha/Pulse2Alike#lv2-group-osc_3> ;
     ], [
         a lv2:InputPort, lv2:ControlPort ;
@@ -1808,6 +1814,8 @@ It plays MIDI notes, and takes pitch bend, the mod wheel, breath, aftertouch and
         lv2:minimum 0 ;
         lv2:maximum 1 ;
         lv2:portProperty lv2:integer, lv2:toggled ;
+        lv2:scalePoint [ rdfs:label "OFF" ; rdf:value 0 ],
+                       [ rdfs:label "ON" ; rdf:value 1 ] ;
         rdfs:comment "On reproduces this Pulse 2's measured departures from the textbook circuit - the 1 ms modulation staircase, FX's silence, the arpeggiator's quirks; off is the idealised instrument, and costs more CPU." ;
         pg:group <https://github.com/chrispurusha/Pulse2Alike#lv2-group-plug_in> ;
     ], [
@@ -2044,6 +2052,8 @@ It plays MIDI notes, and takes pitch bend, the mod wheel, breath, aftertouch and
         lv2:minimum 0 ;
         lv2:maximum 1 ;
         lv2:portProperty lv2:integer, lv2:toggled ;
+        lv2:scalePoint [ rdfs:label "OFF" ; rdf:value 0 ],
+                       [ rdfs:label "ON" ; rdf:value 1 ] ;
         rdfs:comment "The instrument's own hiss, before and after the filter." ;
         pg:group <https://github.com/chrispurusha/Pulse2Alike#lv2-group-plug_in> ;
     ] .

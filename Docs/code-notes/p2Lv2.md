@@ -1,9 +1,10 @@
 # lv2/ - notes
 
 The LV2 plug-in, for MOD devices (the Dwarf first) and any Linux LV2 host: `p2Lv2.c` (the plug-in), `p2Lv2Ports.c`
-(its ports), `p2Lv2Ttl.c` (its Turtle), `p2Lv2Presets.c` (sounds into presets), `Makefile`, `test/`. Started
-2026-10-24. Headless: a MOD device draws its own controls from the ports, so none of the panel, SynthLib's renderer or
-FreeType is built - the engine is compiled with `P2_NO_EDITOR`, as `tools/p2render` already did.
+(its ports), `p2Lv2Ttl.c` (its Turtle), `p2Lv2Gui.c` (its panel on a MOD device), `p2Lv2Presets.c` (sounds into
+presets), `Makefile`, `test/`. Started 2026-10-24. The binary is headless: none of the desktop panel, SynthLib's
+renderer or FreeType is built - the engine is compiled with `P2_NO_EDITOR`, as `tools/p2render` already did. The
+panel a MOD device shows is a web page in the bundle (§16), drawn by MOD's web interface, not by the plug-in.
 
 It is written against SynthLib's format-free description (`synthlibPlugin.h`), as the VST3 and Audio Unit wrappers
 are, and never reaches into the engine: `p2Plugin.c` is the same file the desktop plug-ins build.
@@ -11,17 +12,22 @@ are, and never reaches into the engine: `p2Plugin.c` is the same file the deskto
 ## 1. Identity
 `P2_LV2_URI` names the plug-in and every port is found by its `lv2:symbol`: a MOD pedalboard and an LV2 preset save
 symbols, not indices. Neither may change once a bundle is out - like the VST3 class ids. The URI is under the
-project's own address; **settle it before the first public bundle**.
+project's own address, settled on 2026-10-24.
 
 `lv2:minorVersion` / `lv2:microVersion` are what a MOD device compares to take a bundle as newer. They are the LV2
 plug-in's own (`P2_LV2_MINOR_VERSION`, `P2_LV2_MICRO_VERSION`), not derived from the release version: a scheme that
 let them go down at 1.0 would make MOD keep the old bundle.
 
+They also set what MOD calls the plug-in's stability (mod-ui's `utils_lilv.cpp`): minor 0 is "experimental", an odd
+minor or an odd micro "testing", both even "stable". 1.0 lists as testing, which suits it until it has been played
+on a device; the first bundle meant as stable is minor 2, micro 0.
+
 ## 2. A port's value is what the panel shows
 A port holds `offset + scale x plain`, `plain` being the engine's own value (`gP2Params`' plainMin..plainMax) - which
 is exactly the panel's text for it: the bipolar dials read -64..+63, the semitones -48..+48, Arp Tempo in BPM
 (46 + 2 per step), Swing 0..100 % and Delay -50..+50 %, Range and Length from 1. The lists are `lv2:enumeration`s
-of their entries and OFF/ON is `lv2:toggled` (a switch, which a Dwarf footswitch can take). The generator checks every
+of their entries and OFF/ON is `lv2:toggled` (a switch, which a Dwarf footswitch can take), with OFF and ON as its
+scale points too, so what MOD prints for it reads as the panel's. The generator checks every
 step of every port against the panel's text (§5), so the two cannot drift apart.
 
 A host may send anything: `p2_lv2_normalized()` rounds a stepped port to its nearest step and clamps every port to
@@ -56,7 +62,7 @@ The generator fails on a parameter that is neither a port nor one of the above, 
 
 ## 5. The Turtle is generated, and committed
 `p2Lv2Ttl` links the engine's tables and writes `manifest.ttl` and `Pulse2Alike.ttl` from them: names, ranges,
-defaults, scale points, units, groups. `make -C lv2 ttl` after any parameter change; `make -C lv2 check` fails while
+defaults, scale points, units, groups - and `modgui.ttl` and the panel's template (§16). `make -C lv2 ttl` after any parameter change; `make -C lv2 check` fails while
 the committed files differ from what it would write. Committed, so a cross build (mod-plugin-builder, `make dwarf`)
 needs no program run on the build machine - only the generator needs a host compiler.
 
@@ -148,8 +154,9 @@ most where it costs most: the drive, and Anomalies off. glibc 2.27's `exp`, `log
 of 2.28, so on a Dwarf they weigh more than any x86 profile shows.
 
 ## 14. The checks
-`make -C lv2 check`: the committed Turtle is the generator's (§5); it is valid against the LV2 specifications and
-MOD's vocabulary (`lv2/test/mod.lv2`, from mod-lv2-extensions, for checking only); `check-binary` (with no glibc
+`make -C lv2 check`: the committed Turtle and panel template are the generator's (§5); the Turtle is valid against the
+LV2 specifications and MOD's vocabularies (`lv2/test/mod.lv2` and `modgui.lv2`, from mod-lv2-extensions, for checking
+only); `check-binary` (with no glibc
 ceiling, for a build for this machine); and `test/p2Lv2Test`.
 
 `p2Lv2Test` loads the built `.so` as a host does - URID map, 128-frame blocks as on a MOD device, MIDI and
@@ -177,3 +184,46 @@ A preset is PNNN, the slot its dump is addressed to (edit-buffer dumps in turn f
 so a pedalboard that chose P012 still finds P012 after the sounds are changed. It sets the parameters a dump
 carries and no others: loading a sound leaves Oversampling, Anomalies, Hiss and Master Volume as the player has
 them. A slot left INIT is not a preset. A bundle built without PRESETS after one built with them loses them.
+
+## 16. The panel on a MOD device
+A MOD device's web interface draws a plug-in from its modgui: an HTML template, a stylesheet and a script in the
+bundle (`modgui.ttl`, `modgui/`). Without one it draws a plain box with a few knobs and the rest only in the
+settings dialog - 110 controls in a list. With one, the pedalboard shows the instrument's own way of reaching them:
+its matrix. On the Dwarf itself there is no panel; it is what a browser on the device's address shows, and what
+makes a sound there, live, with the Dwarf's knobs for what is played (README).
+
+**The drawing is original**, in the manner of the instrument's panel - black, its lime green, the matrix of six rows
+over six knobs, the LCD framed in green and the line from it round the arrows - with none of Waldorf's: no name,
+logo, wordmark or photograph. The name on it is the project's.
+
+**Pages.** `kPages` (`p2Lv2Gui.c`) is the instrument's matrix row by row - OSC 1/2/3, LFO 1 - LFO 2 - GLIDE,
+ENV F/A, ARP, VCF, VCA - and then what it reaches with Mod (MOD 1-2 ... 7-8) and Global (VOICE, GLOBAL); ARP TIMING
+(Step, Swing, Delay, Length, Accent) shares the ARP row as the instrument's arp settings share its button. Each page
+is six knobs. A row's button steps through its pages and an LED shows which, as on the instrument; the Mod and
+Global labels, where the instrument prints its shift functions, step through theirs; the two arrows step through
+every page. The LCD heads the page and names each knob with its value as MOD formats it - a list's entry, a unit -
+and a value there can be typed. Master Volume has its own knob, where the instrument has its data knob. A page the
+matrix does not print dims the matrix, so its labels are not read for the LCD's.
+
+**Every control is on it once.** `p2_lv2_gui_check()` fails the generator unless every port the plug-in shows is on
+exactly one page (the arp step bytes are not shown, §4), so a parameter added to the ports cannot be missing from
+the panel. The template is generated from the page table for the same reason the Turtle is (§5) - 110 bindings by
+hand would drift - and `check-ttl` compares it; the stylesheet and the script are written by hand.
+
+**How it works.** Every page's knobs are in the template at once, each bound to its port by MOD
+(`mod-role="input-control-port"`), in the same six places; the script shows one page's and hides the rest
+(`visibility`, so a hidden knob cannot be clicked either). MOD keeps every one of them current - a change from a
+Dwarf knob, MIDI or a preset lands on its page whether it is shown or not. A knob is a still steel cap and a pointer
+MOD turns (`mod-widget-rotation`), so the light on the steel does not turn with it; that attribute is mod-ui's from
+May 2022 (MOD OS 1.12 on). On an older one the pointers stay still and the LCD values still follow. The page shown
+is the panel's own, not saved: a pedalboard opens on VCF.
+
+Under MOD's drag handle (`z-index` 20) is the face and what is only printed on it; above it, what is pressed or
+turned, which stops a press reaching the pedalboard so a click is not a drag. Every size is a border box, whatever
+the page around says. The script is plain ES5 with the jQuery mod-ui already has: it runs in whatever browser opens
+the device.
+
+**The pictures.** `screenshot-pulse2alike.png` (the panel at its size, 760 x 300) and `thumbnail-pulse2alike.png`
+(at most 256 x 64, as MOD asks) are the panel as mod-ui draws it, on its VCF page at the defaults: mod-ui run in
+development mode (`MOD_DEV_HOST=1`, `LV2_PATH` on `build/lv2`), the plug-in added, the panel taken at zoom 1 with
+Playwright and its corners cut round. After changing the look, take them again.

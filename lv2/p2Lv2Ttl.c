@@ -17,7 +17,8 @@
  */
 // Notes: Docs/code-notes/p2Lv2.md - "// notes §k" refers there.
 //
-// usage: p2Lv2Ttl <bundle directory>   writes manifest.ttl and Pulse2Alike.ttl there (lv2/Makefile: make ttl)
+// usage: p2Lv2Ttl <bundle directory>   writes manifest.ttl, Pulse2Alike.ttl, modgui.ttl and the panel's template there
+//                                      (lv2/Makefile: make ttl)
 
 #include <ctype.h>
 #include <math.h>
@@ -25,8 +26,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include "synthlibPlugin.h"
+#include "p2Lv2Gui.h"
 #include "p2Lv2Ports.h"
 
 #define SHORT_NAME_MAX    (16)   // notes §5: what MOD keeps of lv2:shortName and mod:label
@@ -279,7 +282,7 @@ static void write_manifest(FILE * f) {
             "<" P2_LV2_URI ">\n"
             "    a lv2:Plugin, lv2:InstrumentPlugin ;\n"
             "    lv2:binary <Pulse2Alike.so> ;\n"
-            "    rdfs:seeAlso <Pulse2Alike.ttl> .\n");
+            "    rdfs:seeAlso <Pulse2Alike.ttl>, <modgui.ttl> .\n");
 }
 
 static void write_groups(FILE * f) {
@@ -353,7 +356,8 @@ static void write_control(FILE * f, const tP2Lv2Port * port, uint32_t index) {
         fprintf(f, "        units:unit %s ;\n", port->unit);
     }
 
-    if (list && !(port->flags & P2_LV2_TOGGLE)) {
+    // a switch's OFF/ON too, so a value MOD prints for it reads as the panel's (notes §16)
+    if (list) {
         int steps = (int)lround(p->plainMax - p->plainMin);
 
         for (int k = 0; k <= steps; k++) {
@@ -450,6 +454,16 @@ static void write_manifest_file(FILE * f, const tSynthLibPluginDesc * d) {
     write_manifest(f);
 }
 
+static void write_gui_ttl(FILE * f, const tSynthLibPluginDesc * d) {
+    (void)d;
+    p2_lv2_gui_write_ttl(f);
+}
+
+static void write_gui_icon(FILE * f, const tSynthLibPluginDesc * d) {
+    (void)d;
+    p2_lv2_gui_write_icon(f);
+}
+
 // What the engine links against from a wrapper; the generator never runs the engine.
 void synthlib_plugin_param_edited(void * inst, uint32_t id, double normalized) {
     (void)inst;
@@ -469,13 +483,19 @@ int main(int argc, char ** argv) {
         fail("mod:brand must be at most %d characters and mod:label %d", BRAND_MAX, SHORT_NAME_MAX);
     }
     check_ports();
+    gFailures += p2_lv2_gui_check();
 
     if (gFailures > 0) {
         fprintf(stderr, "p2Lv2Ttl: %d problem%s, nothing written\n", gFailures, (gFailures == 1) ? "" : "s");
         return 1;
     }
+    char                        modgui[2048];
 
-    if (!write_file(argv[1], "manifest.ttl", write_manifest_file, d) || !write_file(argv[1], "Pulse2Alike.ttl", write_plugin, d)) {
+    snprintf(modgui, sizeof(modgui), "%s/modgui", argv[1]);
+    mkdir(modgui, 0777);    // there already, or write_file says it cannot write
+
+    if (  !write_file(argv[1], "manifest.ttl", write_manifest_file, d) || !write_file(argv[1], "Pulse2Alike.ttl", write_plugin, d)
+       || !write_file(argv[1], "modgui.ttl", write_gui_ttl, d) || !write_file(argv[1], "modgui/icon-pulse2alike.html", write_gui_icon, d)) {
         return 1;
     }
     printf("p2Lv2Ttl: %u control ports, %u groups, written to %s\n", gP2Lv2PortCount, section_count() + 1, argv[1]);

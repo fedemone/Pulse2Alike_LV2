@@ -1,0 +1,332 @@
+/*
+ * Pulse2Alike - the panel on a MOD device. Docs/code-notes/p2Lv2.md §16.
+ * An original drawing in the manner of the instrument's panel - black, its lime green, the matrix - with no maker's
+ * name or logo. Everything is scoped under .mod-pulse2alike{{{cns}}}, as MOD asks of a modgui.
+ *
+ * Under the drag handle (z-index 20): the face and what is only printed on it. Above it: what is clicked or turned.
+ * Every size is a border box, whatever the page around it says (mod-ui's Bootstrap says so too, other hosts may not).
+ */
+
+.mod-pulse2alike{{{cns}}} {
+    position: absolute;
+    width: 760px;
+    height: 300px;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.mod-pulse2alike{{{cns}}},
+.mod-pulse2alike{{{cns}}} * {
+    box-sizing: border-box;
+}
+
+.mod-pulse2alike{{{cns}}} .mod-drag-handle {
+    border-radius: 9px;
+}
+
+.mod-pulse2alike{{{cns}}} .p2a-face {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 760px;
+    height: 300px;
+    border-radius: 9px;
+    background: linear-gradient(180deg, #232323 0%, #161616 6%, #121212 70%, #0b0b0b 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10), inset 0 -2px 0 rgba(0, 0, 0, 0.6);
+}
+
+/* ---- printed on the face -------------------------------------------------------------------------------------- */
+
+.mod-pulse2alike{{{cns}}} .p2a-print,
+.mod-pulse2alike{{{cns}}} .p2a-name,
+.mod-pulse2alike{{{cns}}} .p2a-subname,
+.mod-pulse2alike{{{cns}}} .p2a-art,
+.mod-pulse2alike{{{cns}}} .p2a-row,
+.mod-pulse2alike{{{cns}}} .p2a-column,
+.mod-pulse2alike{{{cns}}} .p2a-cell,
+.mod-pulse2alike{{{cns}}} .p2a-box,
+.mod-pulse2alike{{{cns}}} .p2a-led {
+    position: absolute;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.mod-pulse2alike{{{cns}}} .p2a-print {
+    color: #e6e6e6;
+    font-size: 8px;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.mod-pulse2alike{{{cns}}} .p2a-art {
+    left: 0;
+    top: 0;
+    fill: none;
+    stroke: #8dc63f;
+    stroke-width: 2;
+}
+
+.mod-pulse2alike{{{cns}}} .p2a-name {
+    left: 18px;
+    top: 236px;
+    color: #8dc63f;
+    font-size: 30px;
+    font-weight: 900;
+    letter-spacing: -1px;
+    line-height: 30px;
+}
+
+.mod-pulse2alike{{{cns}}} .p2a-subname {
+    left: 21px;
+    top: 268px;
+    color: #8dc63f;
+    font-size: 9px;
+    font-weight: bold;
+    letter-spacing: 1.2px;
+}
+
+/* the matrix: a lime rule under each row, a thin line between the columns, the labels white - lime for the page */
+.mod-pulse2alike{{{cns}}} .p2a-row {
+    left: 296px;
+    width: 448px;
+    border-bottom: 1px solid #8dc63f;
+}
+
+.mod-pulse2alike{{{cns}}} .p2a-column {
+    width: 0;
+    border-left: 1px solid rgba(230, 230, 230, 0.35);
+}
+
+.mod-pulse2alike{{{cns}}} .p2a-cell {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: #e6e6e6;
+    font-size: 8.5px;
+    font-weight: bold;
+    line-height: 13px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.mod-pulse2alike{{{cns}}} .p2a-cell span.p2a-on {
+    color: #8dc63f;
+}
+
+/* a page the matrix does not print (Mod, Global, arp timing): its knobs are named on the LCD, so the matrix steps back */
+.mod-pulse2alike{{{cns}}} .p2a-face.p2a-off-matrix .p2a-cell {
+    opacity: 0.35;
+}
+
+.mod-pulse2alike{{{cns}}} .p2a-cell b,
+.mod-pulse2alike{{{cns}}} .p2a-box {
+    background: #8dc63f;
+    color: #111;
+    border-radius: 1px;
+    font-size: 8px;
+    font-weight: bold;
+    padding: 0 3px;
+    line-height: 11px;
+}
+
+.mod-pulse2alike{{{cns}}} .p2a-box {
+    width: 34px;
+    text-align: center;
+    background: transparent;
+    color: #8dc63f;
+    border: 1px solid #8dc63f;
+}
+
+.mod-pulse2alike{{{cns}}} .p2a-box.p2a-on {
+    background: #8dc63f;
+    color: #111;
+}
+
+.mod-pulse2alike{{{cns}}} .p2a-led {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #3a3a3a;
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.8);
+}
+
+.mod-pulse2alike{{{cns}}} .p2a-led.p2a-lit {
+    background: #e8f7c8;
+    box-shadow: 0 0 5px 1px #8dc63f;
+}
+
+/* ---- the LCD: lime frame, backlit screen; the values in it are MOD's, and a number can be typed in -------------- */
+
+.mod-pulse2alike{{{cns}}} .p2a-lcd {
+    position: absolute;
+    z-index: 30;
+    width: 200px;
+    height: 130px;
+    padding: 0;
+    border: 6px solid #8dc63f;
+    border-radius: 2px;
+    background: linear-gradient(180deg, #c4dc6a 0%, #b3cd56 100%);
+    box-shadow: inset 0 0 8px rgba(40, 60, 0, 0.45);
+    color: #17210a;
+    font-family: "Courier New", Courier, monospace;
+    overflow: hidden;
+}
+
+.mod-pulse2alike{{{cns}}} .p2a-lcd-title {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 188px;
+    height: 16px;
+    padding: 0 4px;
+    border-bottom: 1px solid rgba(23, 33, 10, 0.6);
+    font-size: 11px;
+    font-weight: bold;
+    line-height: 15px;
+    white-space: nowrap;
+}
+
+.mod-pulse2alike{{{cns}}} .p2a-lcd-cell {
+    position: absolute;
+    height: 32px;
+    padding: 2px 4px 0 4px;
+    overflow: hidden;
+}
+
+.mod-pulse2alike{{{cns}}} .p2a-lcd-label {
+    display: block;
+    font-size: 9px;
+    line-height: 11px;
+    white-space: nowrap;
+}
+
+.mod-pulse2alike{{{cns}}} .p2a-lcd-value {
+    display: block;
+    font-size: 13px;
+    font-weight: bold;
+    line-height: 17px;
+    white-space: nowrap;
+    outline: none;
+}
+
+/* ---- what is clicked or turned ------------------------------------------------------------------------------- */
+
+.mod-pulse2alike{{{cns}}} .p2a-paged {
+    visibility: hidden;
+}
+
+.mod-pulse2alike{{{cns}}} .p2a-paged.p2a-shown {
+    visibility: visible;
+}
+
+.mod-pulse2alike{{{cns}}} .p2a-button,
+.mod-pulse2alike{{{cns}}} .p2a-arrow {
+    position: absolute;
+    z-index: 30;
+    width: 26px;
+    height: 13px;
+    border-radius: 7px;
+    background: linear-gradient(180deg, #3b3b3b 0%, #111 55%, #000 100%);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    cursor: pointer;
+}
+
+.mod-pulse2alike{{{cns}}} .p2a-button:active,
+.mod-pulse2alike{{{cns}}} .p2a-arrow:active {
+    background: linear-gradient(180deg, #111 0%, #2b2b2b 100%);
+}
+
+.mod-pulse2alike{{{cns}}} .p2a-arrow {
+    width: 30px;
+    height: 15px;
+    color: #e6e6e6;
+    font-size: 10px;
+    line-height: 15px;
+    text-align: center;
+}
+
+.mod-pulse2alike{{{cns}}} .p2a-shift {
+    position: absolute;
+    z-index: 30;
+    width: 40px;
+    color: #e6e6e6;
+    font-size: 8.5px;
+    font-weight: bold;
+    line-height: 12px;
+    text-align: right;
+    cursor: pointer;
+}
+
+.mod-pulse2alike{{{cns}}} .p2a-shift.p2a-on {
+    color: #8dc63f;
+}
+
+/* a still steel cap, and in it the pointer MOD turns (mod-widget-rotation) */
+.mod-pulse2alike{{{cns}}} .p2a-knob {
+    position: absolute;
+    z-index: 30;
+    border-radius: 50%;
+    background: radial-gradient(circle at 38% 30%, #ffffff 0%, #e9e9ea 16%, #b9bbbe 46%, #8c8f93 68%, #55585c 88%, #2d2f31 100%);
+    box-shadow: 0 2px 3px rgba(0, 0, 0, 0.9), 0 0 0 2px #050505, inset 0 -2px 3px rgba(0, 0, 0, 0.35);
+}
+
+.mod-pulse2alike{{{cns}}} .p2a-pointer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    cursor: ns-resize;
+}
+
+.mod-pulse2alike{{{cns}}} .p2a-pointer::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 3px;
+    width: 3px;
+    height: 38%;
+    margin-left: -1.5px;
+    border-radius: 1.5px;
+    background: #1b1b1b;
+}
+
+/* the on/off switch, where the instrument has its power switch */
+.mod-pulse2alike{{{cns}}} .p2a-power {
+    position: absolute;
+    z-index: 30;
+    left: 162px;
+    top: 5px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, #555 0%, #1a1a1a 70%);
+    box-shadow: 0 1px 2px #000, 0 0 0 1px #000;
+    cursor: pointer;
+}
+
+.mod-pulse2alike{{{cns}}} .p2a-power-light {
+    position: absolute;
+    z-index: 30;
+    left: 182px;
+    top: 9px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #2d2d2d;
+}
+
+.mod-pulse2alike{{{cns}}} .p2a-power-light.on {
+    background: #e8f7c8;
+    box-shadow: 0 0 5px 1px #8dc63f;
+}
+
+/* ---- the jacks, MOD's own, beside the face -------------------------------------------------------------------- */
+
+.mod-pulse2alike{{{cns}}} .mod-pedal-input,
+.mod-pulse2alike{{{cns}}} .mod-pedal-output {
+    top: 40px;
+}

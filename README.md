@@ -48,9 +48,12 @@ The VST3 half needs the VST3 SDK at `~/Documents/vst3sdk` (or `$VST3_SDK`); the 
 
 ## LV2, for the MOD Dwarf
 
-The same engine as an LV2 plug-in, headless: a MOD device draws its controls from the ports - every parameter of
-the panel, grouped by its sections - and any Linux LV2 host can load it too. Everything is in `lv2/`; the design
-and the checks are in `Docs/code-notes/p2Lv2.md`.
+The same engine as an LV2 plug-in: every parameter of the panel is a control a MOD device can reach, and on its web
+interface the plug-in has a panel of its own in the manner of the instrument's - the matrix, the LCD, the six knobs.
+Any Linux LV2 host can load it too. Everything is in `lv2/`; the design and the checks are in
+`Docs/code-notes/p2Lv2.md`.
+
+![The panel on a MOD device's web interface](lv2/Pulse2Alike.lv2/modgui/screenshot-pulse2alike.png)
 
 **Onto a Dwarf.** With the Dwarf on USB:
 
@@ -73,9 +76,27 @@ With MOD's own toolchain instead, copy `lv2/mod-plugin-builder/pulse2alike` into
 bundle as presets P001-P500 - a `.syx` of one or many dumps, or a folder of `NNN Name.syx`, as Import Presets reads
 them. On the Dwarf a preset list can go on a footswitch or a knob.
 
+**The panel.** In the pedalboard (a browser on the Dwarf's address, http://192.168.51.1 on USB) the plug-in is
+drawn as the instrument's panel, and works as it does: a row's button steps through its pages - OSC 1, 2, 3 - with
+an LED for the one shown, Mod and Global step through the modulation slots and the voice and global settings, and the
+arrows step through every page. The six knobs are the shown page's; the LCD names each with its value, and a value
+there can be typed. It is the panel to make a sound with, live, while it plays. The drawing is the project's own:
+nothing of Waldorf's - name, logo or photograph - is on it.
+
+**Sound design on the Dwarf.** Every control - all 110 - can go on the Dwarf's own knobs and footswitches. In the
+web interface, open the plug-in's settings (the cogwheel above it), click the assign icon in a parameter's box and,
+under Device, pick a knob or footswitch and a page. The Dwarf has 8 pages of assignments, each with 3 subpages for
+the knobs, so each of its three knobs takes up to 24 controls and footswitches B and C up to 8 each: footswitch A
+steps through the pages (a long press goes back), the buttons under the knobs pick the subpage, and the display
+names each knob's control and shows its value - a knob turns finely, pressed and turned coarsely. A switch (Osc3 Sync,
+an oscillator's Keytrack) suits a footswitch. A sensible start is one page per section of the panel - VCF on one, the
+envelopes on the next - with Advanced in the assign dialog to narrow a knob's range. The assignments are saved with
+the pedalboard. What has not been assigned is set in the web interface: the Dwarf's own screen only reaches what is
+assigned to it.
+
 **Playing it.** MIDI notes, with pitch bend, the mod wheel, breath, aftertouch and the sustain pedal as the
-instrument takes them; every other control is a port, so MIDI-learn CCs to them on the device. Program changes are
-MOD's (presets, snapshots), not the plug-in's. The arpeggiator follows the device's tempo while its transport rolls.
+instrument takes them; any control can also take a MIDI controller's knob (the MIDI tab of the same assign dialog,
+then move the knob). Program changes are MOD's (presets, snapshots), not the plug-in's. The arpeggiator follows the device's tempo while its transport rolls.
 The output can pass full scale, as the desktop plug-ins' does: on a Dwarf, keep Master Volume where it does not clip.
 
 **CPU.** Oversampling defaults to 2x here, 4x on the desktop. Estimated - from aarch64 instruction counts on the

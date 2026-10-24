@@ -4,7 +4,8 @@
 #   make dwarf            the bundle for a MOD Dwarf: build/dwarf/Pulse2Alike.lv2 (notes §13)
 #   make publish          that bundle onto a MOD device on USB (MOD_DEVICE, 192.168.51.1 by default)
 #   make install          this machine's bundle into $(DESTDIR)$(LV2DIR) - ~/.lv2 unless LV2DIR says otherwise
-#   make ttl              the bundle's Turtle again, from the engine's tables - after any parameter change
+#   make ttl              the bundle's Turtle and panel template again, from the engine's tables - after any
+#                         parameter change
 #   make PRESETS=<sounds> any of these with Pulse 2 sound dumps in the bundle as presets: a .syx of one or many, or a
 #                         folder of "NNN Name.syx" (notes §15)
 #   make check            the Turtle up to date and valid, the binary loadable on a Dwarf, and the plug-in rendering
@@ -30,7 +31,10 @@ ENGINE   := $(addprefix $(ROOT)/src/,p2Dco.c p2Filter.c p2Env.c p2Lfo.c p2Drive.
             $(addprefix $(ROOT)/plugin/,p2Plugin.c p2Params.c p2Patch.c)
 SOURCES  := $(ENGINE) $(LV2SRC)/p2Lv2.c $(LV2SRC)/p2Lv2Ports.c
 LOG      := $(SL)/plugin/synthlibLog.c
-TTL      := manifest.ttl Pulse2Alike.ttl
+TTL      := manifest.ttl Pulse2Alike.ttl modgui.ttl
+# notes §16: the panel on a MOD device - the template generated, the rest by hand
+GUI      := $(addprefix modgui/,icon-pulse2alike.html stylesheet-pulse2alike.css script-pulse2alike.js \
+                                screenshot-pulse2alike.png thumbnail-pulse2alike.png)
 
 INCLUDES := -I$(LV2SRC) -I$(ROOT)/src -I$(ROOT)/plugin -I$(SL)/plugin -I$(SL)/src
 DEFINES  := -DP2_NO_EDITOR -DSYNTHLIB_PLUGIN_BUILD=1 -DP2A_VERSION_STRING='"$(VERSION)"'
@@ -49,7 +53,7 @@ OBJECTS := $(patsubst $(ROOT)/%.c,$(OBJ)/%.o,$(SOURCES)) $(OBJ)/synthlibLog.o
 
 .PHONY: all install publish ttl check check-ttl validate check-binary test dwarf dwarf-check clean
 
-all: $(BUNDLE)/Pulse2Alike.so $(addprefix $(BUNDLE)/,$(TTL))
+all: $(BUNDLE)/Pulse2Alike.so $(addprefix $(BUNDLE)/,$(TTL)) $(addprefix $(BUNDLE)/,$(GUI))
 
 $(OBJ)/%.o: $(ROOT)/%.c
 	@mkdir -p $(@D)
@@ -68,12 +72,18 @@ $(BUNDLE)/%.ttl: $(LV2SRC)/Pulse2Alike.lv2/%.ttl
 	@mkdir -p $(@D)
 	cp $< $@
 
+$(BUNDLE)/modgui/%: $(LV2SRC)/Pulse2Alike.lv2/modgui/%
+	@mkdir -p $(@D)
+	cp $< $@
+
 -include $(OBJECTS:.o=.d)
 
 install: all
 	install -d $(DESTDIR)$(LV2DIR)/Pulse2Alike.lv2
 	install -m 644 $(BUNDLE)/*.ttl $(DESTDIR)$(LV2DIR)/Pulse2Alike.lv2/
 	install -m 755 $(BUNDLE)/Pulse2Alike.so $(DESTDIR)$(LV2DIR)/Pulse2Alike.lv2/
+	install -d $(DESTDIR)$(LV2DIR)/Pulse2Alike.lv2/modgui
+	install -m 644 $(addprefix $(BUNDLE)/,$(GUI)) $(DESTDIR)$(LV2DIR)/Pulse2Alike.lv2/modgui/
 
 # ---- the Turtle, from the engine's tables (notes §5) --------------------------------------------------------------
 
@@ -85,9 +95,9 @@ $(HOST)/synthlibLog.o: $(LOG)
 	@mkdir -p $(@D)
 	$(HOST_CC) $(HOST_FLAGS) $(WARN) -include $(LV2SRC)/p2Lv2Compat.h -c $< -o $@
 
-$(GENERATOR): $(ENGINE) $(LV2SRC)/p2Lv2Ports.c $(LV2SRC)/p2Lv2Ports.h $(LV2SRC)/p2Lv2Ttl.c $(HOST)/synthlibLog.o
-	$(HOST_CC) $(HOST_FLAGS) $(WARN) $(WERROR) $(ENGINE) $(LV2SRC)/p2Lv2Ports.c $(LV2SRC)/p2Lv2Ttl.c \
-	    $(HOST)/synthlibLog.o -lm -lpthread -o $@
+GEN_SRC := $(LV2SRC)/p2Lv2Ports.c $(LV2SRC)/p2Lv2Gui.c $(LV2SRC)/p2Lv2Ttl.c
+$(GENERATOR): $(ENGINE) $(GEN_SRC) $(LV2SRC)/p2Lv2Ports.h $(LV2SRC)/p2Lv2Gui.h $(HOST)/synthlibLog.o
+	$(HOST_CC) $(HOST_FLAGS) $(WARN) $(WERROR) $(ENGINE) $(GEN_SRC) $(HOST)/synthlibLog.o -lm -lpthread -o $@
 
 ttl: $(GENERATOR)
 	$(GENERATOR) $(LV2SRC)/Pulse2Alike.lv2
@@ -122,17 +132,18 @@ endif
 check: check-ttl validate check-binary test
 
 check-ttl: $(GENERATOR)
-	@rm -rf $(WORK)/ttl-check && mkdir -p $(WORK)/ttl-check
+	@rm -rf $(WORK)/ttl-check && mkdir -p $(WORK)/ttl-check/modgui
 	@$(GENERATOR) $(WORK)/ttl-check > /dev/null
-	@for f in $(TTL); do \
+	@for f in $(TTL) modgui/icon-pulse2alike.html; do \
 	    diff -u $(LV2SRC)/Pulse2Alike.lv2/$$f $(WORK)/ttl-check/$$f > /dev/null || \
 	        { echo "lv2/Pulse2Alike.lv2/$$f is out of date: run make -C lv2 ttl"; exit 1; }; \
 	done
-	@echo "check-ttl: the committed Turtle is the engine's"
+	@echo "check-ttl: the committed Turtle and panel template are the engine's"
 
-# Against the LV2 specifications and MOD's vocabulary (lv2/test/mod.lv2, from mod-lv2-extensions, for checking only)
+# Against the LV2 specifications and MOD's vocabularies (lv2/test/mod.lv2 and modgui.lv2, from mod-lv2-extensions, for
+# checking only)
 LV2_SCHEMAS ?= $(shell pkg-config --variable=lv2dir lv2 2>/dev/null || echo /usr/lib/lv2)
-MOD_SCHEMAS ?= $(LV2SRC)/test/mod.lv2
+MOD_SCHEMAS ?= $(LV2SRC)/test/mod.lv2 $(LV2SRC)/test/modgui.lv2
 validate: all
 	@command -v sord_validate > /dev/null || { echo "validate: no sord_validate (apt install sordi) - skipped"; exit 0; }; \
 	sord_validate $$(find $(LV2_SCHEMAS) $(MOD_SCHEMAS) -name '*.ttl') $(addprefix $(BUNDLE)/,$(TTL))
