@@ -40,3 +40,9 @@ Measured on the self-oscillating filter's cutoff (amount full, Sustain 0) at Dec
 envelope's time constant is 1.08 times the engine's at every one, while the amp envelope (times to -20 and -30 dB
 at Decay 56 and 63) matches within about 2%. The two share the table, which was measured through the amp envelope;
 the filter envelope's decay and release are scaled by 1.08 (timeScale). Its release is assumed to go with its decay.
+
+## 7. The step's rate, kept (2026-10-24)
+A step's increment (attack) or multiplier (decay, release) is a pure function of the stage, its dial, dt and
+timeScale, but cost a table lookup on a log scale and an exp() every control tick - every host sample with
+Anomalies off. `step_rate()` keeps the last one with the four it was worked out for, and works it out again only
+when one of them differs. The same expressions as before, so renders are byte-identical.

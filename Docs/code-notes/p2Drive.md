@@ -106,3 +106,11 @@ bias and the coupling loop undoing it - 0.8 dB better on paper, nothing physical
 superseded by these; their measurements stand.
 Fit files: `drive_shape.py <curve> shape`, then `loss`, then `sines` to compare with the old shape; the result is
 written to $TMPDIR/p2_drive_shape_<curve>.json and copied into the tables by hand (Drive 96 interpolated).
+
+## 7. What is worked out once (2026-10-24)
+A curve's coupling and shelf coefficients depend only on the rate, and its gain, bias, knee, slope and trim only on
+Drive, but each was worked out again for every oversampled sample - three exp() and a pow() per sample at 4x, which
+on the MOD Dwarf (glibc 2.27, before the fast exp/log/pow of 2.28) was a large part of the drive's cost.
+`follow_shape()` now keeps them, the coefficients until the curve changes and the per-Drive values until Drive does
+(osc 3 on DRIVE moves it every sample, and then they are worked out every sample as before). The same values,
+computed by the same expressions: renders are byte-identical before and after, x86 and aarch64 alike.

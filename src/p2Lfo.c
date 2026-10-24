@@ -68,7 +68,15 @@ void p2_lfo_note(tP2Lfo * l, tP2LfoPhase phase) {
 // notes §2
 double p2_lfo_step(tP2Lfo * l, double dt, double speed, int shape) {
     int    base = shape % SHAPE_COUNT_FAST;
-    double hz   = (shape >= SHAPE_COUNT_FAST) ? slow_hz(speed) : p2_lfo_hz(speed);
+
+    // notes §6: the rate's pow() only when the speed or the kind of shape moves
+    if (!l->rateKnown || (speed != l->speedSeen) || ((shape >= SHAPE_COUNT_FAST) != l->slowSeen)) {
+        l->rateKnown = true;
+        l->speedSeen = speed;
+        l->slowSeen  = shape >= SHAPE_COUNT_FAST;
+        l->hzSeen    = l->slowSeen ? slow_hz(speed) : p2_lfo_hz(speed);
+    }
+    double hz   = l->hzSeen;
     double p    = l->phase + (hz * dt);
 
     if (p >= 1.0) {

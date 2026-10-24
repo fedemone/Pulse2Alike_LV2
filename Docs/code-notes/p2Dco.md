@@ -8,6 +8,11 @@ The period of each semitone of the bottom octave, in two-tick units, is `floor(2
 equal-tempered frequency of MIDI note `i − 36`. `tools/dcocheck` checks the law against the frequencies captured
 from the instrument (design §2.1).
 
+The 13 periods (the octave and the next C, which the slope to B needs) are a table, `kBasePeriod` (2026-10-24):
+worked out with pow() they cost two calls per oscillator per control tick - with unison or PARA-8 and Anomalies
+off, a third of the engine's time. Each value is at least 0.05 of a tick from the next integer, so no rounding in
+pow() could have moved a floor(); `tools/dcocheck` checks the table against the pow() law at every pitch.
+
 ## 3. The period law
 `(base − slope·frac/256) >> (octave + 1)`. The period, not the frequency, is interpolated between semitones,
 which is design §2.1's 0.7 cent. Integer arithmetic throughout, so the reproduction lands on whole-tick periods,

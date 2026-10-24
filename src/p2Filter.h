@@ -38,6 +38,8 @@ typedef struct {
     double mix[6];          // input, loop input, stages 1-4
     double shelfB0, shelfB1, shelfA1;
     double top2G;
+    bool   known;               // notes §9: G and k are for cutoffSeen and resonanceSeen
+    double cutoffSeen, resonanceSeen;
 
     // state
     double stage[4];

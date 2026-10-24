@@ -55,6 +55,10 @@ static const tCurveShape kFuzz                  = {
     {-35.37, -33.29,  -30.94,  -30.49,  -29.39,-28.32}, {5.95, 3.06, 2.15, 1.93, 1.86, 1.79}, {-5.10, -2.39, -0.95, 0.04, 0.74, 1.41}
 };
 
+static double one_pole(double hz, double rate) {
+    return 1.0 - exp(-2.0 * M_PI * hz / rate);
+}
+
 void p2_drive_init(tP2Drive * d, double rate) {
     d->rate      = rate;
     d->coupled   = 0.0;
@@ -64,6 +68,8 @@ void p2_drive_init(tP2Drive * d, double rate) {
     d->inPower   = 0.0;
     d->inAttack  = 1.0 - exp(-1.0 / (LEVEL_ATTACK_S * rate));
     d->inRelease = 1.0 - exp(-1.0 / (LEVEL_RELEASE_S * rate));
+    d->dcBlockK  = one_pole(DC_BLOCK_HZ, rate);
+    d->curveSeen = -1;
 }
 
 // a per-Drive value, between the measured settings
@@ -78,13 +84,30 @@ static double at_drive(const double v[DRIVE_POINTS], double drive) {
 }
 
 // notes §5: the instrument's quiet inputs come out quieter still, and still clipped, below a knee in the input's level
-static double ceiling_db(tP2Drive * d, const tCurveShape * c, double drive, double hw) {
+static double ceiling_db(tP2Drive * d, double hw) {
     double power   = hw * hw;
 
     d->inPower += ((power > d->inPower) ? d->inAttack : d->inRelease) * (power - d->inPower);
     double levelDb = (10.0 * log10(fmax(d->inPower, 1e-20))) - LEVEL_METER_OVER_RMS_DB;
 
-    return at_drive(c->trimDb, drive) - (at_drive(c->slope, drive) * fmax(0.0, at_drive(c->kneeDb, drive) - levelDb));
+    return d->trimDb - (d->slope * fmax(0.0, d->kneeDb - levelDb));
+}
+
+// notes §7: the curve's coefficients when the curve changes, its per-Drive values when either does
+static void follow_shape(tP2Drive * d, const tCurveShape * c, int curve, double drive) {
+    if (curve != d->curveSeen) {
+        d->curveSeen = curve;
+        d->couplingK = one_pole(c->couplingHz, d->rate);
+        d->lowPassK  = one_pole(c->shelfHz, d->rate);
+    } else if (drive == d->driveSeen) {
+        return;
+    }
+    d->driveSeen = drive;
+    d->gain      = pow(10.0, at_drive(c->gainDb, drive) / 20.0);
+    d->bias      = at_drive(c->bias, drive);
+    d->kneeDb    = at_drive(c->kneeDb, drive);
+    d->slope     = at_drive(c->slope, drive);
+    d->trimDb    = at_drive(c->trimDb, drive);
 }
 
 // notes §6: a knee from round (hardness 1) to square (large); tanh where no hardness was fitted
@@ -95,10 +118,6 @@ static double clip(double u, double ceiling, double hardness) {
         return ceiling * tanh(x);
     }
     return ceiling * x / pow(1.0 + pow(fabs(x), hardness), 1.0 / hardness);
-}
-
-static double one_pole(double hz, double rate) {
-    return 1.0 - exp(-2.0 * M_PI * hz / rate);
 }
 
 double p2_drive_process(tP2Drive * d, tP2DriveCurve curve, double drive, double x) {
@@ -113,17 +132,18 @@ double p2_drive_process(tP2Drive * d, tP2DriveCurve curve, double drive, double 
         return 0.0;
     }
     c           = (curve == eP2DriveTube) ? &kTube : &kFuzz;
+    follow_shape(d, c, (int)curve, drive);
     double              hw      = x * HARDWARE_UNITS_PER_ENGINE;
-    double              ceiling = pow(10.0, ceiling_db(d, c, drive, hw) / 20.0);
+    double              ceiling = pow(10.0, ceiling_db(d, hw) / 20.0);
     double              pos = c->positive * ceiling, neg = c->negative * ceiling;
 
-    u           = (hw * pow(10.0, at_drive(c->gainDb, drive) / 20.0)) - d->coupled + (at_drive(c->bias, drive) * ceiling);
+    u           = (hw * d->gain) - d->coupled + (d->bias * ceiling);
     clipped     = (u >= 0.0) ? clip(u, pos, c->hardPos) : clip(u, neg, c->hardNeg);
-    d->coupled += one_pole(c->couplingHz, d->rate) * clipped;
-    d->lowPass += one_pole(c->shelfHz, d->rate) * (clipped - d->lowPass);
+    d->coupled += d->couplingK * clipped;
+    d->lowPass += d->lowPassK * (clipped - d->lowPass);
     shaped      = (c->shelfDirect * clipped) + ((1.0 - c->shelfDirect) * d->lowPass);
     // the clipper's bias leaves a DC offset; the output stage is AC coupled
     out         = shaped - d->dcBlock;
-    d->dcBlock += one_pole(DC_BLOCK_HZ, d->rate) * out;
+    d->dcBlock += d->dcBlockK * out;
     return out / HARDWARE_UNITS_PER_ENGINE;
 }

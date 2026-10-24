@@ -17,3 +17,8 @@ Not a fixed fraction of the fast law: measured with sTRI on the self-oscillating
 32, 48, 64 and 96 (0.0229, 0.0763, 0.214, 0.610, 1.648, 9.98 Hz), which is 0.11 of the fast law at speed 4,
 0.20 at 32 and 0.24 at 64. Interpolated between the points on a log scale and extended at the ends. The 0.197
 first used held only near speed 32, where it was measured.
+
+## 6. The rate, kept (2026-10-24)
+The rate's pow() (or the slow shapes' table) was worked out every control tick. `p2_lfo_step()` keeps it with the
+speed and the kind of shape (fast or slow) it was for, and works it out again when either moves - a modulated LFO 1
+Speed does that each tick, as before. `rateKnown` starts false in the engine's zeroed instance. Byte-identical renders.

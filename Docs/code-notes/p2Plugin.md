@@ -434,3 +434,13 @@ decay as a curve and was replaced. `LEVEL2_MEASURED` 0 restores the old linear l
 Open: in those 2 kHz takes the engine's filter-input slew (§40) and loop saturation compress loud osc 2 harder than
 the instrument (its peak 1.73 x where the engine without them follows the fit) - an engine issue, small at P006's
 low notes.
+
+## 53. Work hoisted out of the sample loops (2026-10-24)
+Two values were worked out where they could not change: the 3 ms glide's coefficient (an exp() every host sample;
+`glide_coefficient()` now once a block), and osc 3's mix gain (a pow() every oversampled sample; now once a host
+sample, after the control tick that is the only thing that moves it). With the drive (p2Drive notes §7), the filter
+(p2Filter notes §9), the envelopes (p2Env notes §7), the LFOs (p2Lfo notes §6) and the DCO's base periods (p2Dco
+notes §2), this takes 17-28% of the instructions out of the costly cases - Anomalies off, the drive on - and a few
+percent elsewhere, for the MOD Dwarf. Every change keeps the expressions it replaced: 63 renders across the shapes,
+routings, drive curves, filter modes, mod matrix, arp, glide, oversampling and three rates are byte-identical to
+the engine before, built for x86 at -O2 and for aarch64 at the MOD toolchain's -O3 -ffast-math.

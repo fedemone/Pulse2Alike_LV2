@@ -19,12 +19,16 @@
 #ifndef __P2_LFO_H__
 #define __P2_LFO_H__
 
+#include <stdbool.h>
 #include <stdint.h>
 
 typedef struct {
     double   phase;      // 0..1
     double   held;       // S&H's current value
     uint32_t random;     // xorshift state
+    bool     rateKnown;  // notes §6: hzSeen is the rate at speedSeen, for the fast or the slow shapes
+    bool     slowSeen;
+    double   speedSeen, hzSeen;
 } tP2Lfo;
 
 typedef enum {

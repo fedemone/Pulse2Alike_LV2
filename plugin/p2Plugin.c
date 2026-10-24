@@ -725,10 +725,12 @@ static bool anomalies_on(const tP2Plugin * p) {
     return plain_int(p, kP2ParamAnomalies) != 0;
 }
 
-// notes §7
-static void glide_controls(tP2Plugin * p, bool jump) {
-    double coeff = jump ? 1.0 : (1.0 - exp(-1.0 / (CONTROL_GLIDE_SECONDS * p->sampleRate)));
+// notes §7: coeff 1 jumps there; per sample it is glide_coefficient()'s
+static double glide_coefficient(const tP2Plugin * p) {
+    return 1.0 - exp(-1.0 / (CONTROL_GLIDE_SECONDS * p->sampleRate));
+}
 
+static void glide_controls(tP2Plugin * p, double coeff) {
     p->cutoff    += (plain(p, kP2ParamCutoff) - p->cutoff) * coeff;    // the knob, before any modulation
     p->resonance += (plain(p, kP2ParamResonance) - p->resonance) * coeff;
 }
@@ -783,7 +785,7 @@ static void * p2_create(const tSynthLibPluginDesc * desc) {
     p->startPreset         = true;
     p2_filter_init(&p->filter, p->sampleRate * p->oversample);
     p2_drive_init(&p->drive, p->sampleRate * p->oversample);
-    glide_controls(p, true);
+    glide_controls(p, 1.0);
     p->cutoffNow           = p->cutoffTarget = p->cutoff;
     p->lastNote            = KEYTRACK_REFERENCE_NOTE;
     p->glidePitch          = (int64_t)KEYTRACK_REFERENCE_NOTE * 256;   // notes §42: running before the first note
@@ -870,7 +872,7 @@ static void p2_prepare(void * inst, const tSynthLibSetup * setup) {
     }
     p2_filter_init(&p->filter, p->sampleRate * p->oversample);
     p2_drive_init(&p->drive, p->sampleRate * p->oversample);
-    glide_controls(p, true);
+    glide_controls(p, 1.0);
     p->cutoffNow  = p->cutoffTarget = p->cutoff;
     p->lastNote   = KEYTRACK_REFERENCE_NOTE;
     p->glidePitch = (int64_t)KEYTRACK_REFERENCE_NOTE * 256;
@@ -1161,6 +1163,7 @@ static void p2_process(void * inst, const float *const * in, uint32_t numIn, flo
     double         master    = pow(plain(p, kP2ParamMaster) / 127.0, 2.0); // notes §19
     int            tick      = steps ? (int)lround(CONTROL_TICK_SECONDS * p->sampleRate) : 1;
     double         smooth    = 1.0 - exp(-1.0 / (CONTROL_SMOOTH_SECONDS * p->sampleRate));
+    double         glide     = glide_coefficient(p);
 
     noise_band_limit_coefficients(rateIn, noiseLp);
 
@@ -1187,7 +1190,7 @@ static void p2_process(void * inst, const float *const * in, uint32_t numIn, flo
             p2_arp_run(&p->arp, &arp, p->arpTicks, hostClock, arp_note, p);
         }
         p->arpTicks  += tickStep;
-        glide_controls(p, false);
+        glide_controls(p, glide);
 
         if (--p->tickCountdown <= 0) {
             control_tick(p, (double)tick / p->sampleRate);
@@ -1208,6 +1211,8 @@ static void p2_process(void * inst, const float *const * in, uint32_t numIn, flo
         p->vca       += (p->vcaTarget - p->vca) * smooth;
         p->cutoffNow += (p->cutoffTarget - p->cutoffNow) * smooth;
         update_filter(p);
+        // notes §53: moves only with the control tick, so worked out once a sample rather than once an oversample
+        double gain3 = (!feedback && (routing == 0)) ? osc3_mix_gain(p) : 0.0;
 
         for (int o = 0; o < p->oversample; o++) {
             double osc3    = p2_dco_next(&p->dco[2]);
@@ -1233,7 +1238,7 @@ static void p2_process(void * inst, const float *const * in, uint32_t numIn, flo
                 // notes §25: subtracted, as on the instrument; the seed is the noise floor a loop starts from
                 sources -= level3 * OSC3_FB_GAIN * p->driveOut;
             } else if (routing == 0) {
-                osc += osc_stage(p, 2, osc3_mix_gain(p) * osc3 * ((shape3 == 0) ? PULSE_LEVEL : 1.0), evenHp);
+                osc += osc_stage(p, 2, gain3 * osc3 * ((shape3 == 0) ? PULSE_LEVEL : 1.0), evenHp);
             } else if (routing == 1) {
                 // notes §52: osc 3 inverted and AC coupled, then osc 2's level times (1 + depth x it), floored
                 double l2 = -osc3 - p->level2Coupled;

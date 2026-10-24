@@ -112,6 +112,7 @@ void p2_env_reset(tP2Env * e) {
     e->level      = 0.0;
     e->phase      = 0.0;
     e->attackFrom = 0.0;
+    e->stepStage  = eP2EnvIdle;
 }
 
 void p2_env_gate_on(tP2Env * e) {
@@ -127,14 +128,26 @@ void p2_env_gate_off(tP2Env * e) {
     }
 }
 
+// notes §7: what one step of dt adds to the level (attack, a linear ramp from 0 to 1) or multiplies it by (decay,
+// release) - the time laws' exp() and log()s, spent again only when the stage, its dial or dt moves
+static double step_rate(tP2Env * e, double value, double dt) {
+    if ((e->stepStage != e->stage) || (value != e->stepValue) || (dt != e->stepDt) || (e->timeScale != e->stepScale)) {
+        e->stepStage = e->stage;
+        e->stepValue = value;
+        e->stepDt    = dt;
+        e->stepScale = e->timeScale;
+        e->stepRate  = (e->stage == eP2EnvAttack) ? (dt / (p2_env_attack_seconds(value) / E_AT_MINUS_1_DB))
+                       : exp(-dt / (e->timeScale * p2_env_decay_seconds(value) / -log(E_AT_MINUS_40_DB)));
+    }
+    return e->stepRate;
+}
+
 // notes §3
 double p2_env_step(tP2Env * e, double dt, double attack, double decay, double sustain, double release, tP2EnvLoop loop) {
     switch (e->stage) {
         case eP2EnvAttack:
         {
-            double full = p2_env_attack_seconds(attack) / E_AT_MINUS_1_DB; // a linear ramp from 0 to 1
-
-            e->level += dt / full;
+            e->level += step_rate(e, attack, dt);
 
             if (e->level >= 1.0) {
                 e->level = 1.0;
@@ -147,9 +160,8 @@ double p2_env_step(tP2Env * e, double dt, double attack, double decay, double su
         {
             double s      = p2_env_sustain_level(sustain);
             double target = e->rising ? 1.0 : s;
-            double tau    = e->timeScale * p2_env_decay_seconds(decay) / -log(E_AT_MINUS_40_DB);
 
-            e->level = target + ((e->level - target) * exp(-dt / tau));
+            e->level = target + ((e->level - target) * step_rate(e, decay, dt));
 
             // notes §5
             if (fabs(e->level - target) < ARRIVED_WITHIN) {
@@ -164,9 +176,7 @@ double p2_env_step(tP2Env * e, double dt, double attack, double decay, double su
 
         case eP2EnvRelease:
         {
-            double tau = e->timeScale * p2_env_decay_seconds(release) / -log(E_AT_MINUS_40_DB);
-
-            e->level *= exp(-dt / tau);
+            e->level *= step_rate(e, release, dt);
 
             if (e->level < IDLE_BELOW) {
                 e->level = 0.0;
