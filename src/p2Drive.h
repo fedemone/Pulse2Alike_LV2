@@ -34,6 +34,13 @@ typedef struct {
     double dcIn;
     double inPower;   // notes §5: the input's level, for the quiet-input loss
     double inAttack, inRelease;
+
+    // notes §7: what depends only on the rate, the curve and the Drive value, kept until one of them moves
+    double dcBlockK;
+    int    curveSeen;               // -1 before the first sample
+    double couplingK, lowPassK;     // the curve's at this rate
+    double driveSeen;
+    double gain, bias, kneeDb, slope, trimDb;
 } tP2Drive;
 
 void p2_drive_init(tP2Drive * d, double rate);

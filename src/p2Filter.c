@@ -106,9 +106,18 @@ void p2_filter_reset(tP2Filter * f) {
     f->shelfX = f->shelfY = f->top2 = 0.0;
 }
 
+// notes §9: set every sample, so the tan() and pow()s are spent only on a value that moved
 void p2_filter_set(tP2Filter * f, double cutoff, double resonance, tP2FilterMode mode) {
-    f->G       = tpt_gain(p2_filter_oscillation_hz(cutoff), f->sampleRate);
-    f->k       = p2_filter_feedback(resonance);
+    if (!f->known || (cutoff != f->cutoffSeen)) {
+        f->G          = tpt_gain(p2_filter_oscillation_hz(cutoff), f->sampleRate);
+        f->cutoffSeen = cutoff;
+    }
+
+    if (!f->known || (resonance != f->resonanceSeen)) {
+        f->k             = p2_filter_feedback(resonance);
+        f->resonanceSeen = resonance;
+    }
+    f->known   = true;
     memcpy(f->mix, kMix[((int)mode >= 0) && (mode < eP2FilterCount) ? mode : eP2FilterLp24], sizeof(f->mix));
     f->lowPass = (mode == eP2FilterLp24);   // notes §7: LP12 fits better with its leak after the saturation
 }

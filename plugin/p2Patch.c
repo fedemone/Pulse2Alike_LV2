@@ -237,7 +237,11 @@ static bool file_time(struct timespec * t) {
     if (stat(p2_presets_path(), &st) != 0) {
         return false;
     }
+#if defined (__APPLE__)
     *t = st.st_mtimespec;
+#else
+    *t = st.st_mtim;   // POSIX 2008's name for it; macOS has only its own
+#endif
     return true;
 }
 
@@ -481,7 +485,7 @@ int p2_presets_write_folder(const char * folder) {
         char name[P2_SOUND_NAME_LENGTH + 1], path[2048];
         int  k = (int)strlen(gCacheName[n - 1]);
 
-        snprintf(name, sizeof(name), "%s", gCacheName[n - 1]);
+        snprintf(name, sizeof(name), "%.*s", P2_SOUND_NAME_LENGTH, gCacheName[n - 1]);   // bounded, or gcc warns
 
         while ((k > 0) && (name[k - 1] == ' ')) {
             name[--k] = '\0';

@@ -1,0 +1,57 @@
+#!/bin/sh
+# Fails unless a built Pulse2Alike.so will load on a MOD Dwarf: no glibc symbol newer than the Dwarf's 2.27, no library
+# a Dwarf may not have, and nothing exported but lv2_descriptor. Docs/code-notes/p2Lv2.md §13.
+#
+#   lv2/check-binary <Pulse2Alike.so> [newest glibc allowed: default 2.27, "none" for a build for this machine]
+
+set -e
+
+SO=$1
+MAX=${2:-2.27}
+READELF=${READELF:-readelf}
+FAILED=0
+
+if [ ! -f "$SO" ]; then
+    echo "usage: $0 <plugin.so> [glibc version]" >&2
+    exit 2
+fi
+
+# what the dynamic linker will be asked for - per library, so it is arch-independent
+needed_versions=$("$READELF" -V -W "$SO" | sed -n 's/.*Name: GLIBC_\([0-9.]*\).*/\1/p' | sort -u -t. -k1,1n -k2,2n -k3,3n)
+newest=$(printf '%s\n' $needed_versions | tail -n 1)
+
+for v in $needed_versions; do
+    if [ "$MAX" = none ]; then
+        break
+    fi
+
+    if [ "$(printf '%s\n%s\n' "$v" "$MAX" | sort -t. -k1,1n -k2,2n -k3,3n | tail -n 1)" != "$MAX" ]; then
+        echo "FAIL: needs GLIBC_$v, newer than $MAX - these symbols:" >&2
+        "$READELF" --dyn-syms -W "$SO" | grep "@GLIBC_$v " | awk '{print "        " $8}' >&2
+        FAILED=1
+    fi
+done
+
+for lib in $("$READELF" -d -W "$SO" | sed -n 's/.*(NEEDED).*\[\(.*\)\]/\1/p'); do
+    case "$lib" in
+        libc.so.6 | libm.so.6 | libpthread.so.0 | libdl.so.2 | ld-linux-aarch64.so.1) ;;
+        *)
+            echo "FAIL: links $lib, which a MOD device may not have" >&2
+            FAILED=1
+            ;;
+    esac
+done
+
+# _init and _fini come from an older glibc's start files, which export them from every shared object
+exports=$("$READELF" --dyn-syms -W "$SO" | awk '$5 == "GLOBAL" && $7 != "UND" {print $8}' | sed 's/@.*//' | grep -v -x -e _init -e _fini | sort -u)
+
+if [ "$exports" != "lv2_descriptor" ]; then
+    echo "FAIL: exports more than lv2_descriptor:" $exports >&2
+    FAILED=1
+fi
+
+if [ $FAILED -ne 0 ]; then
+    exit 1
+fi
+echo "check-binary: $(basename "$SO") ($("$READELF" -h "$SO" | sed -n 's/.*Machine: *//p')) needs glibc ${newest:-none} at most" \
+     "(allowed: $MAX), exports lv2_descriptor alone"

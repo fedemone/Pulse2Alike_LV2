@@ -18,7 +18,29 @@ static const struct {
 #define CLOCK_OFFSET_PPM    (1.5)
 #define TOLERANCE_CENTS     (0.02)
 
+// p2Dco notes §2-3 as first written, with pow(): the base-period table must give exactly this at every pitch
+static uint32_t law_period_ticks(int32_t pitch) {
+    int32_t  semitone = pitch / P2_PITCH_PER_SEMITONE;
+    int32_t  note     = semitone % 12;
+    double   hz       = 440.0 * pow(2.0, ((double)note - 105.0) / 12.0);
+    double   hzNext   = 440.0 * pow(2.0, ((double)note + 1.0 - 105.0) / 12.0);
+    uint32_t base     = (uint32_t)floor((2.0 * P2_DCO_CLOCK_HZ) / hz);
+    uint32_t slope    = base - (uint32_t)floor((2.0 * P2_DCO_CLOCK_HZ) / hzNext);
+
+    return (base - ((slope * (uint32_t)(pitch % P2_PITCH_PER_SEMITONE)) >> 8)) >> ((semitone / 12) + 1);
+}
+
 int main(void) {
+    for (int32_t pitch = 0; pitch <= P2_PITCH_MAX; pitch++) {
+        if (p2_dco_period_ticks(pitch) != law_period_ticks(pitch)) {
+            printf("pitch %d: %u ticks, the law %u\nFAIL\n", pitch, p2_dco_period_ticks(pitch), law_period_ticks(pitch));
+            failures++;
+            break;
+        }
+    }
+
+    printf("base periods: %s at every pitch 0..%d\n", failures ? "differ from the law" : "the law's", P2_PITCH_MAX);
+
     for (unsigned i = 0; i < sizeof(kCaptured) / sizeof(kCaptured[0]); i++) {
         double law      = P2_DCO_CLOCK_HZ / p2_dco_period_ticks(p2_pitch_from_midi_note(kCaptured[i].note));
         double measured = kCaptured[i].hz / (1.0 + CLOCK_OFFSET_PPM * 1e-6);

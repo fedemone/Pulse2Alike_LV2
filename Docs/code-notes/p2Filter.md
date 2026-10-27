@@ -70,3 +70,10 @@ against MIX raises the instrument's output +5 dB up to 250 Hz, +3.7 at 500, +1.7
 stopband levels off near -45 dB - a leak floor, carried around the gain. The engine's leak terms (input and loop
 input) therefore take the input without the routing gain (`leakScale`); P006's late noise went from +3.3 dB at
 1-4 kHz to within ~1 dB in every octave, with nothing else in P006 moved, and nothing changes with osc 3 on MIX.
+
+## 9. Coefficients for a value that moved (2026-10-24)
+The engine sets the filter every host sample, and each set cost a tan() and three pow()s for G and the feedback
+table for k, whether or not the cutoff or the resonance had changed. `p2_filter_set()` now keeps the cutoff and
+resonance it last worked them out for (`known`, `cutoffSeen`, `resonanceSeen`) and does it again only for a value
+that differs; `p2_filter_init()` clears `known`. A held note with the cutoff still costs nothing; an envelope on
+the cutoff costs what it did. Byte-identical renders.

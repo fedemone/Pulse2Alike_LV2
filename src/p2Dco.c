@@ -24,11 +24,16 @@ int32_t p2_pitch_from_midi_note(double note) {
     return (int32_t)lround(note * P2_PITCH_PER_SEMITONE) + P2_PITCH_MIDI_ZERO;
 }
 
-// notes §2
-static uint32_t base_period(int32_t semitoneInOctave) {
-    double hz = 440.0 * pow(2.0, ((double)semitoneInOctave - 105.0) / 12.0);
+// notes §2: floor(24 MHz / f) for the 13 semitones from MIDI note -36 up - a table, as the instrument's would be,
+// because the pow() it was worked out with cost two calls per oscillator per control tick. tools/dcocheck checks it
+// against that law at every pitch.
+static const uint32_t kBasePeriod[13] = {
+    23483943, 22165891, 20921815, 19747563, 18639218, 17593079, 16605655,
+    15673651, 14793957, 13963636, 13179917, 12440185, 11741971
+};
 
-    return (uint32_t)floor((2.0 * P2_DCO_CLOCK_HZ) / hz);
+static uint32_t base_period(int32_t semitoneInOctave) {
+    return kBasePeriod[semitoneInOctave];
 }
 
 // notes §3

@@ -1,0 +1,36 @@
+# The LV2 plug-in: checked for this machine and for a MOD Dwarf, and the Dwarf's bundle left as an artifact, ready for
+#   base64 < Pulse2Alike.lv2-moddwarf.tar.gz | curl -F 'package=@-' http://192.168.51.1/sdk/install
+# Docs/code-notes/p2Lv2.md §13-14.
+name: LV2
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  lv2:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lv2-dev sordi gcc-aarch64-linux-gnu qemu-user
+
+      - name: Bundle for this machine - Turtle, validity, binary, rendering against the engine
+        run: make -C lv2 check
+
+      - name: Bundle for a MOD Dwarf - its C library, and rendering under qemu
+        run: make -C lv2 dwarf-check
+
+      - name: Pack the Dwarf's bundle
+        run: tar czf Pulse2Alike.lv2-moddwarf.tar.gz -C build/dwarf Pulse2Alike.lv2
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pulse2Alike.lv2-moddwarf
+          path: Pulse2Alike.lv2-moddwarf.tar.gz

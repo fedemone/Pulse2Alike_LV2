@@ -1,0 +1,75 @@
+#!/bin/sh
+# Makes a sysroot holding a MOD Dwarf's C library - glibc 2.27 for arm64, which is also Ubuntu 18.04's - so that a
+# stock aarch64 cross compiler links nothing the Dwarf lacks. Run by `make -C lv2 dwarf`; see Docs/code-notes/p2Lv2.md.
+#
+#   lv2/do-glibc-sysroot <directory>
+#
+# Needs curl, sha256sum, and dpkg-deb or ar; and the LV2 headers on this machine (apt install lv2-dev), which are
+# copied in, since the sysroot hides /usr/include.
+
+set -e
+
+DEST=$1
+MIRROR=${UBUNTU_PORTS:-http://ports.ubuntu.com/ubuntu-ports}
+
+if [ -z "$DEST" ]; then
+    echo "usage: $0 <directory>" >&2
+    exit 2
+fi
+
+if [ -f "$DEST/.complete" ]; then
+    exit 0
+fi
+
+# PINNED: another file would be another C library. Ubuntu 18.04 (bionic-updates), arm64.
+PACKAGES="pool/main/g/glibc/libc6_2.27-3ubuntu1.6_arm64.deb 0b4348723ff763cb5d256283a362fb1f4db0658df9331c19b29c63a94cbb00dc
+pool/main/g/glibc/libc6-dev_2.27-3ubuntu1.6_arm64.deb 69586108d590bdd350d115c1b4a58763d930b9776bd554fd14462ffbbd305d19
+pool/main/l/linux/linux-libc-dev_4.15.0-213.224_arm64.deb 9e350db851f6cf12ae14d6a611ec2102e7d03004e9ea143c67e541fe7cf11f47"
+
+LV2_INCLUDE=$(pkg-config --variable=includedir lv2 2>/dev/null || true)
+LV2_INCLUDE=${LV2_INCLUDE:-/usr/include}
+
+if [ ! -f "$LV2_INCLUDE/lv2/core/lv2.h" ]; then
+    echo "error: no LV2 headers (lv2/core/lv2.h) in $LV2_INCLUDE - install them, e.g. apt install lv2-dev" >&2
+    exit 1
+fi
+
+rm -rf "$DEST"
+mkdir -p "$DEST/.debs"
+
+echo "$PACKAGES" | while read -r path sum; do
+    deb="$DEST/.debs/$(basename "$path")"
+
+    echo "  fetch  $(basename "$path")"
+    curl -fsSL "$MIRROR/$path" -o "$deb"
+
+    if [ "$(sha256sum "$deb" | cut -d' ' -f1)" != "$sum" ]; then
+        echo "error: $(basename "$path") is not the file this script expects (sha256)" >&2
+        exit 1
+    fi
+
+    if command -v dpkg-deb > /dev/null; then
+        dpkg-deb -x "$deb" "$DEST"
+    else
+        (cd "$DEST/.debs" && ar x "$deb" data.tar.xz && tar -xJf data.tar.xz -C "$DEST" && rm -f data.tar.xz)
+    fi
+done
+
+# The packages' absolute links (libm.so -> /lib/aarch64-linux-gnu/libm.so.6) would point at this machine; made
+# relative, they point into the sysroot
+find "$DEST" -type l | while read -r link; do
+    target=$(readlink "$link")
+
+    case "$target" in
+        /*)
+            rel=$(realpath -m --relative-to="$(dirname "$link")" "$DEST$target")
+            ln -sfn "$rel" "$link"
+            ;;
+    esac
+done
+
+mkdir -p "$DEST/usr/include"
+cp -R "$LV2_INCLUDE/lv2" "$DEST/usr/include/"
+rm -rf "$DEST/.debs"
+touch "$DEST/.complete"
+echo "  sysroot: glibc 2.27 arm64 in $DEST"
