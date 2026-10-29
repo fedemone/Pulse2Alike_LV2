@@ -35,6 +35,15 @@
 
 #define NO_PARAM    (UINT32_MAX)
 
+// notes §8: KXStudio's control input port change request, which mod-host offers: a plug-in asks the host to move one
+// of its control ports (lv2/control-input-port-change-request.h of KXStudio's LV2 extensions, ISC)
+#define P2_LV2_PORT_CHANGE_REQUEST_URI    "http://kx.studio/ns/lv2ext/control-input-port-change-request"
+
+typedef struct {
+    void * handle;
+    int (*request_change)(void * handle, uint32_t index, float value);       // an LV2_ControlInputPort_Change_Status
+} tP2Lv2Request;
+
 typedef struct {
     LV2_URID midiEvent;
     LV2_URID object, blank;
@@ -66,6 +75,10 @@ typedef struct {
     bool                        primed;                            // every port has been given once
 
     uint32_t                    midiParam[SYNTHLIB_MIDI_CONTROLS]; // notes §8: a MIDI control's parameter
+    uint32_t                    ccPort[128];                       // notes §8: a CC's port, NO_PARAM if none
+    bool                        held[kP2ParamCount];               // a CC moved the port's parameter, the port not yet
+    float                       heldValue[kP2ParamCount];          // what the port was when the CC came
+    const tP2Lv2Request *       portChange;                        // the host's, or NULL
 } tP2Lv2;
 
 // ---- what the engine links against from a wrapper -----------------------------------------------------------------
@@ -174,6 +187,26 @@ static void advance_transport(tP2Lv2 * w, uint32_t frames) {
 
 // ---- MIDI ---------------------------------------------------------------------------------------------------------
 
+// notes §8: an instrument CC moves its parameter now, and asks the host to move the port to match, so a MOD device's
+// web interface and saved pedalboard follow. Until the port moves, its old value is not given to the engine again: a
+// host that moves it later, or not at all, does not undo the CC.
+static void take_cc(tP2Lv2 * w, uint32_t i, uint8_t byte) {
+    const tP2Lv2Port * port  = &gP2Lv2Ports[i];
+    float              value = (float)p2_lv2_byte_value(port, byte);
+
+    w->desc->cb.setParam(w->inst, port->id, p2_lv2_normalized(port, value));
+
+    if (!w->held[i] && (w->control[i] != NULL)) {
+        w->held[i]      = true;
+        w->heldValue[i] = *w->control[i];
+    }
+    w->applied[i] = value;
+
+    if (w->portChange != NULL) {
+        (void)w->portChange->request_change(w->portChange->handle, kP2Lv2FirstControl + i, value);
+    }
+}
+
 // notes §8: whether the message is one for the engine - and, with deliver, gives it the engine. Asked first without,
 // so the block is split only at a message that reaches it.
 static bool take_midi(tP2Lv2 * w, const uint8_t * m, uint32_t size, bool deliver) {
@@ -236,6 +269,13 @@ static bool take_midi(tP2Lv2 * w, const uint8_t * m, uint32_t size, bool deliver
                 }
                 return true;
             }
+
+            if (w->ccPort[m[1] & 0x7Fu] != NO_PARAM) {
+                if (deliver) {
+                    take_cc(w, w->ccPort[m[1] & 0x7Fu], m[2] & 0x7Fu);
+                }
+                return true;
+            }
             id    = w->midiParam[m[1] & 0x7Fu];
             value = (double)(m[2] & 0x7Fu) / 127.0;
             break;
@@ -283,6 +323,14 @@ static void take_controls(tP2Lv2 * w) {
             continue;      // not connected: the engine keeps what it has
         }
         value         = *w->control[i];
+
+        // notes §8: after a CC, the port's old value is the CC's to replace, not the engine's to take back
+        if (w->held[i]) {
+            if (value == w->heldValue[i]) {
+                continue;
+            }
+            w->held[i] = false;
+        }
 
         if (w->primed && (value == w->applied[i])) {
             continue;
@@ -390,6 +438,25 @@ static LV2_Handle instantiate(const LV2_Descriptor * descriptor, double rate, co
 
         if ((control >= 0) && (control < SYNTHLIB_MIDI_CONTROLS) && (p2_lv2_port_of(id) == NULL)) {
             w->midiParam[control] = id;
+        }
+    }
+
+    // notes §8: the instrument's CCs, onto the ports of the parameters they move
+    for (uint32_t c = 0; c < 128; c++) {
+        w->ccPort[c] = NO_PARAM;
+    }
+
+    for (uint32_t k = 0; k < gP2Lv2CcCount; k++) {
+        const tP2Lv2Port * port = p2_lv2_port_of(gP2Lv2Ccs[k].id);
+
+        if ((port != NULL) && (gP2Lv2Ccs[k].cc < 128)) {
+            w->ccPort[gP2Lv2Ccs[k].cc] = (uint32_t)(port - gP2Lv2Ports);
+        }
+    }
+
+    for (int i = 0; (features != NULL) && (features[i] != NULL); i++) {
+        if (strcmp(features[i]->URI, P2_LV2_PORT_CHANGE_REQUEST_URI) == 0) {
+            w->portChange = (const tP2Lv2Request *)features[i]->data;
         }
     }
 

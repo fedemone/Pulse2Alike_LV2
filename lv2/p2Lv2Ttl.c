@@ -410,11 +410,13 @@ static void write_plugin(FILE * f, const tSynthLibPluginDesc * d) {
             "instrument: three DCOs and noise, one resonant filter with four outputs (LP24, LP12, BP12, HP12), drive "
             "and VCA, two envelopes, two LFOs, an eight-slot modulation matrix and an arpeggiator. Monophonic, with "
             "unison and paraphonic modes.\n\n"
-            "It plays MIDI notes, and takes pitch bend, the mod wheel, breath, aftertouch and the sustain pedal as "
-            "the instrument does; every other control is a port, so map CCs to them with the host's MIDI learn. The "
-            "arpeggiator follows the host's tempo while the transport rolls, and its own Arp Tempo otherwise. "
+            "It plays MIDI notes, and takes pitch bend, the mod wheel, breath, aftertouch, the sustain pedal and the "
+            "CC of every sound parameter as the instrument does, a CC carrying the parameter's own value; where the "
+            "host allows it (a MOD device does), a CC moves the control too. The arpeggiator follows the host's tempo "
+            "while the transport rolls, and its own Arp Tempo otherwise. "
             "Program changes are left to the host: use presets.\"\"\" ;\n");
-    fprintf(f, "    lv2:requiredFeature urid:map ;\n    lv2:optionalFeature lv2:hardRTCapable ;\n");
+    fprintf(f, "    lv2:requiredFeature urid:map ;\n    lv2:optionalFeature lv2:hardRTCapable ,\n"
+            "        <http://kx.studio/ns/lv2ext/control-input-port-change-request> ;\n");
 
     fprintf(f, "    lv2:port [\n        a lv2:OutputPort, lv2:AudioPort ;\n        lv2:index %d ;\n"
             "        lv2:symbol \"out_l\" ;\n        lv2:name \"Left\" ;\n        lv2:designation pg:left ;\n"

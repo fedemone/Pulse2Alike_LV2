@@ -74,6 +74,7 @@ names, logos or photographs; its script uses the jQuery that MOD's web interface
 | **LV2 headers** (lv2plug.in) | ISC | Compiled against (structs, constants, inline helpers); nothing of theirs is linked or shipped |
 | **glibc** | LGPL 2.1+ | Linked **dynamically** against the device's own. `make dwarf` links against Ubuntu 18.04's arm64 glibc 2.27, fetched into `build/` by `lv2/do-glibc-sysroot`; it is used to link and to test under qemu, and never copied into the bundle |
 | **MOD's LV2 vocabularies** (`lv2/test/mod.lv2` and `lv2/test/modgui.lv2`, from mod-audio/mod-lv2-extensions) | ISC, MOD Audio UG - `LICENSE` in each | No: `make check` validates the Turtle against them |
+| **KXStudio's control input port change request vocabulary** (`lv2/test/kx-control-input-port-change-request.lv2`, from KXStudio/LV2-Extensions) | ISC, Filipe Coelho - `LICENSE` | No: `make check` validates the Turtle against it |
 
 The bundle's Turtle and the panel's template are generated from this project's own tables and are GPLv3 with the
 rest.
