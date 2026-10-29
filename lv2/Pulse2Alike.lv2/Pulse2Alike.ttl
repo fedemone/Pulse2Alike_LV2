@@ -186,12 +186,13 @@
     mod:brand "Purusha" ;
     mod:label "Pulse2Alike" ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 0 ;
+    lv2:microVersion 1 ;
     rdfs:comment """A reproduction inspired by the Waldorf Pulse 2, modelled from captures of a real instrument: three DCOs and noise, one resonant filter with four outputs (LP24, LP12, BP12, HP12), drive and VCA, two envelopes, two LFOs, an eight-slot modulation matrix and an arpeggiator. Monophonic, with unison and paraphonic modes.
 
-It plays MIDI notes, and takes pitch bend, the mod wheel, breath, aftertouch and the sustain pedal as the instrument does; every other control is a port, so map CCs to them with the host's MIDI learn. The arpeggiator follows the host's tempo while the transport rolls, and its own Arp Tempo otherwise. Program changes are left to the host: use presets.""" ;
+It plays MIDI notes, and takes pitch bend, the mod wheel, breath, aftertouch, the sustain pedal and the CC of every sound parameter as the instrument does, a CC carrying the parameter's own value; where the host allows it (a MOD device does), a CC moves the control too. The arpeggiator follows the host's tempo while the transport rolls, and its own Arp Tempo otherwise. Program changes are left to the host: use presets.""" ;
     lv2:requiredFeature urid:map ;
-    lv2:optionalFeature lv2:hardRTCapable ;
+    lv2:optionalFeature lv2:hardRTCapable ,
+        <http://kx.studio/ns/lv2ext/control-input-port-change-request> ;
     lv2:port [
         a lv2:OutputPort, lv2:AudioPort ;
         lv2:index 0 ;

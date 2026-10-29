@@ -90,10 +90,25 @@ wrapper does it) and the controllers the parameter table maps (`midiControl`) on
 ports - the mod wheel, breath, the sustain pedal, bank select. ALL SOUND OFF and ALL NOTES OFF reset the voice, as
 in the Audio Unit wrapper. On every channel, as the desktop plug-ins.
 
+The instrument's CCs too (Docs/design.md §4 and midi.guide's table for the Pulse 2: every sound parameter's,
+`gP2Lv2Ccs` in `p2Lv2Ports.c`; CC 7 and 10 as the sound's volume and pan), though the parameters they move are
+ports. A CC carries the parameter's sound byte,
+as the instrument takes it and a dump holds it (`p2_lv2_byte_value`: from the parameter's lowest byte, one byte a
+step, clamped to its range), so a controller or sequence made for the instrument plays this the same way - CC 34 = 3
+is APW, not 3/127 of the way through the shapes. The CC moves the parameter at once, on its own frame, and asks the
+host to move the port to match through KXStudio's control input port change request, which mod-host offers: a MOD
+device's web interface and saved pedalboard then follow, the lists too - MOD's MIDI learn reaches no list of more
+than two entries (`lv2:enumeration`), and this does. The device's display does not follow at once: mod-ui passes a
+port the plug-in moved to the web page, not to the display, which shows the new value the next time it draws the
+control, and a knob on it carries on from the value it showed. Until the port moves, its value from before the CC is not
+given to the engine again (`held`), so a host that moves it later, or never (one without the feature), does not undo
+the CC; the next value the host gives the port is taken as any port move. A port MIDI-learnt on the same CC by the
+host moves twice, the host's way and this one.
+
 Not taken: program changes, since there is no presets file on a device and the ports would not follow a sound
 loaded behind the host's back - MOD switches sounds with presets and snapshots, and can take program changes for
-those itself; CC 7 and every other controller, since the parameters they would move are ports, which MOD's MIDI
-learn reaches instead. A message the engine takes nothing from does not split the block (§12).
+those itself; controllers the instrument has not. A message the engine takes nothing from does not split the block
+(§12).
 
 ## 9. Flush to zero
 `run()` sets flush-to-zero (and denormals-are-zero on x86) for its length and puts the host's mode back after
@@ -155,20 +170,24 @@ of 2.28, so on a Dwarf they weigh more than any x86 profile shows.
 
 ## 14. The checks
 `make -C lv2 check`: the committed Turtle and panel template are the generator's (§5); the Turtle is valid against the
-LV2 specifications and MOD's vocabularies (`lv2/test/mod.lv2` and `modgui.lv2`, from mod-lv2-extensions, for checking
-only); `check-binary` (with no glibc
+LV2 specifications, MOD's vocabularies (`lv2/test/mod.lv2` and `modgui.lv2`, from mod-lv2-extensions) and the port
+change request's (`lv2/test/kx-control-input-port-change-request.lv2`), all for checking only; `check-binary` (with no glibc
 ceiling, for a build for this machine); and `test/p2Lv2Test`.
 
 `p2Lv2Test` loads the built `.so` as a host does - URID map, 128-frame blocks as on a MOD device, MIDI and
 `time:Position` in atom sequences, ports moving between blocks and past their ends - and drives the engine, linked
-into the test from the plug-in's own object files, directly through its descriptor as an ideal host would. Fifteen
+into the test from the plug-in's own object files, directly through its descriptor as an ideal host would. Sixteen
 cases (the oscillator modes, osc 3's routings, the drive, filter modes, oversampling, Anomalies, performance
-controls, ignored messages, port moves, the arpeggiator on its own clock and following a host): the two must agree
-to the bit, both channels must be the same, and each must sound (or be silent, for FX). Each case runs in pairs so
-the two engines number their instances alike, each instance's oscillators starting where that count puts them
-(p2Plugin notes §35). Mutating the wrapper - no block split, the bend off by one, velocity 0 as a note-on, CC 123
-ignored, the tempo not per quarter, the transport not carried on, ports applied once, aftertouch to the wheel, the
-P001 load left in - fails the test each time.
+controls, ignored messages, the instrument's CCs, port moves, the arpeggiator on its own clock and following a host):
+the two must agree to the bit, both channels must be the same, and each must sound (or be silent, for FX). Each case
+runs in pairs so the two engines number their instances alike, each instance's oscillators starting where that count
+puts them (p2Plugin notes §35). Each also runs with a host offering the port change request (§8), moving the port at
+once as mod-host does and three blocks later: both must sound as the host without it, and each instrument CC must
+ask for its port, with its value. The CC table is checked too - each CC once, none of the performance controls',
+each onto a port - and a few CCs' values against Docs/design.md §4. Mutating the wrapper - no block split, the bend
+off by one, velocity 0 as a note-on, CC 123 ignored, the tempo not per quarter, the transport not carried on, ports
+applied once, aftertouch to the wheel, the P001 load left in, a CC's port value taken back, a request for the wrong
+port - fails the test each time.
 
 `make -C lv2 dwarf-check` builds the same test for aarch64 against the Dwarf's C library and runs it under
 qemu-aarch64 on that library: the Dwarf's binary, its compiler flags and its glibc. The GitHub workflow

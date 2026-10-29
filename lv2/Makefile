@@ -141,9 +141,10 @@ check-ttl: $(GENERATOR)
 	@echo "check-ttl: the committed Turtle and panel template are the engine's"
 
 # Against the LV2 specifications and MOD's vocabularies (lv2/test/mod.lv2 and modgui.lv2, from mod-lv2-extensions, for
-# checking only)
+# checking only), and the port change request's (lv2/test/kx-control-input-port-change-request.lv2, from KXStudio's
+# LV2-Extensions, notes §8)
 LV2_SCHEMAS ?= $(shell pkg-config --variable=lv2dir lv2 2>/dev/null || echo /usr/lib/lv2)
-MOD_SCHEMAS ?= $(LV2SRC)/test/mod.lv2 $(LV2SRC)/test/modgui.lv2
+MOD_SCHEMAS ?= $(LV2SRC)/test/mod.lv2 $(LV2SRC)/test/modgui.lv2 $(LV2SRC)/test/kx-control-input-port-change-request.lv2
 validate: all
 	@command -v sord_validate > /dev/null || { echo "validate: no sord_validate (apt install sordi) - skipped"; exit 0; }; \
 	sord_validate $$(find $(LV2_SCHEMAS) $(MOD_SCHEMAS) -name '*.ttl') $(addprefix $(BUNDLE)/,$(TTL))

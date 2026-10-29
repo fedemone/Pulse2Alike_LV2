@@ -230,3 +230,57 @@ double p2_lv2_default(const tP2Lv2Port * port) {
     return (port->defaultStep >= 0) ? (port->offset + (port->scale * (p->plainMin + port->defaultStep)))
                                     : p2_lv2_value(port, p->defaultNormalized);
 }
+
+// notes §8: the instrument's CCs, as midi.guide's table for the Pulse 2 has them (Docs/design.md §4 has the same).
+// Those down to Osc 2 Fade are the ones the desktop plug-in drives the instrument with (p2Plugin.c, kHwCc); the LFOs,
+// bend range and mod slots are the manual's, not yet measured against the instrument. CC 7 is the sound's Volume, as
+// on the instrument (p2Plugin notes §28), and CC 10, the table's PAN, its Pan the same way. The mod wheel (CC 1) is
+// not here: it is a parameter that is not a port, which take_midi() gives the engine as it is.
+const tP2Lv2Cc gP2Lv2Ccs[] = {
+    {kP2ParamOsc1Shape,       34}, {kP2ParamOsc1Width,    35}, {kP2ParamOsc1Semitone,     70}, {kP2ParamOsc1Detune,      71},
+    {kP2ParamOsc1Keytrack,    73}, {kP2ParamOsc1Level,    45}, {kP2ParamOsc2Shape,        38}, {kP2ParamOsc2Width,       39},
+    {kP2ParamOsc2Semitone,    36}, {kP2ParamOsc2Detune,   37}, {kP2ParamOsc2Keytrack,     40}, {kP2ParamOsc2Level,       46},
+    {kP2ParamOsc3Shape,       44}, {kP2ParamOsc3Routing,  72}, {kP2ParamOsc3Semitone,     42}, {kP2ParamOsc3Detune,      43},
+    {kP2ParamOsc3Sync,        41}, {kP2ParamOsc3Level,    47}, {kP2ParamNoiseLevel,       48}, {kP2ParamCutoff,          50},
+    {kP2ParamResonance,       56}, {kP2ParamFilterType,   49}, {kP2ParamFilterEnvAmount,  52}, {kP2ParamFilterKeytrack,  51},
+    {kP2ParamFilterVelocity,  53}, {kP2ParamDrive,        76}, {kP2ParamDriveCurve,       77}, {kP2ParamPan,             59},
+    {kP2ParamVolume,          57}, {kP2ParamAmpVelocity,  58}, {kP2ParamEnvFAttack,       14}, {kP2ParamEnvFDecay,       15},
+    {kP2ParamEnvFSustain,     16}, {kP2ParamEnvFRelease,  17}, {kP2ParamEnvFLoop,         74}, {kP2ParamEnvFTrigger,     29},
+    {kP2ParamEnvAAttack,      18}, {kP2ParamEnvADecay,    19}, {kP2ParamEnvASustain,      20}, {kP2ParamEnvARelease,     21},
+    {kP2ParamEnvALoop,        75}, {kP2ParamEnvATrigger,  31}, {kP2ParamGlideRate,         5}, {kP2ParamGlideMode,       62},
+    {kP2ParamArpActive,       79}, {kP2ParamArpRange,     80}, {kP2ParamArpTempo,         81}, {kP2ParamArpClock,        82},
+    {kP2ParamArpMode,         83}, {kP2ParamArpStep,      84}, {kP2ParamArpSwing,         85}, {kP2ParamArpDelay,        86},
+    {kP2ParamArpLength,       87}, {kP2ParamArpAccent,    88}, {kP2ParamUnisonDetune,    102}, {kP2ParamOsc1Fade,       103},
+    {kP2ParamOsc2Fade,       104},
+    {kP2ParamLfo1Speed,       24}, {kP2ParamLfo1Shape,    25}, {kP2ParamLfo2Speed,        26}, {kP2ParamLfo2Delay,       27},
+    {kP2ParamBendUp,         105}, {kP2ParamBendDown,    106},
+    {kP2ParamMod1Source,     108}, {kP2ParamMod1Amount,  109}, {kP2ParamMod1Target,      110},
+    {kP2ParamMod2Source,     111}, {kP2ParamMod2Amount,  112}, {kP2ParamMod2Target,      113},
+    {kP2ParamMod3Source,     114}, {kP2ParamMod3Amount,  115}, {kP2ParamMod3Target,      116},
+    {kP2ParamMod4Source,     117}, {kP2ParamMod4Amount,  118}, {kP2ParamMod4Target,      119},
+    {kP2ParamMod5Source,      90}, {kP2ParamMod5Amount,   91}, {kP2ParamMod5Target,       92},
+    {kP2ParamMod6Source,      93}, {kP2ParamMod6Amount,   94}, {kP2ParamMod6Target,       95},
+    {kP2ParamMod7Source,      96}, {kP2ParamMod7Amount,   97}, {kP2ParamMod7Target,       98},
+    {kP2ParamMod8Source,      99}, {kP2ParamMod8Amount,  100}, {kP2ParamMod8Target,      101},
+    {kP2ParamVolume,           7}, {kP2ParamPan,          10},
+};
+
+const uint32_t gP2Lv2CcCount = sizeof(gP2Lv2Ccs) / sizeof(gP2Lv2Ccs[0]);
+
+// notes §8: a sound byte on the port, read as p2_patch_from_syx() reads a dump's - from the parameter's lowest byte,
+// one byte a step, clamped to its range as the instrument clamps a CC
+double p2_lv2_byte_value(const tP2Lv2Port * port, int byte) {
+    const tSynthLibParam * p    = &gP2Params[port->id];
+    double                 span = p->plainMax - p->plainMin;
+    int32_t                low  = 0;
+    double                 v;
+
+    for (int b = 0; b < P2_SOUND_BYTES; b++) {
+        if (gP2SoundBytes[b].paramId == port->id) {
+            low = gP2SoundBytes[b].rawLow;    // the last, as p2_patch_from_syx() takes it
+        }
+    }
+
+    v = (span > 0.0) ? ((double)(byte - low) / span) : 0.0;
+    return p2_lv2_value(port, fmin(1.0, fmax(0.0, v)));
+}

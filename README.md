@@ -95,8 +95,13 @@ the pedalboard. What has not been assigned is set in the web interface: the Dwar
 assigned to it.
 
 **Playing it.** MIDI notes, with pitch bend, the mod wheel, breath, aftertouch and the sustain pedal as the
-instrument takes them; any control can also take a MIDI controller's knob (the MIDI tab of the same assign dialog,
-then move the knob). Program changes are MOD's (presets, snapshots), not the plug-in's. The arpeggiator follows the device's tempo while its transport rolls.
+instrument takes them, and the instrument's own CC for every sound parameter (CC 34 for Osc 1's shape, 50 for the
+cutoff...; Docs/design.md §4), each carrying the parameter's value as on the instrument, so a controller or sequence
+made for the Pulse 2 plays it the same way; the control follows in the web interface and the saved pedalboard, and
+on the device's display the next time it shows the control.
+A control that is not a list can also take any MIDI controller's knob (the MIDI tab of the same assign dialog, then
+move the knob); MOD offers no MIDI tab for a list of more than two entries, which the instrument's CC reaches
+instead. Program changes are MOD's (presets, snapshots), not the plug-in's. The arpeggiator follows the device's tempo while its transport rolls.
 The output can pass full scale, as the desktop plug-ins' does: on a Dwarf, keep Master Volume where it does not clip.
 
 **CPU.** Oversampling defaults to 2x here, 4x on the desktop. Estimated - from aarch64 instruction counts on the

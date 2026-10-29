@@ -33,7 +33,7 @@
 // notes §1: what a MOD device compares to decide a bundle is newer - raise micro for every bundle that is, and never
 // let either go down
 #define P2_LV2_MINOR_VERSION    (1)
-#define P2_LV2_MICRO_VERSION    (0)
+#define P2_LV2_MICRO_VERSION    (1)
 
 // The ports before the controls
 enum {
@@ -72,5 +72,17 @@ bool p2_lv2_stepped(const tP2Lv2Port * port);
 double p2_lv2_normalized(const tP2Lv2Port * port, double value);    // a port's value to the engine's 0..1
 double p2_lv2_value(const tP2Lv2Port * port, double normalized);    // and back
 double p2_lv2_default(const tP2Lv2Port * port);                     // the port's default value
+
+// notes §8: the instrument's CCs, each onto the parameter it moves, which is a port. A CC's value is the parameter's
+// sound byte, as a sound dump holds it.
+typedef struct {
+    uint32_t id;
+    uint8_t  cc;
+} tP2Lv2Cc;
+
+extern const tP2Lv2Cc   gP2Lv2Ccs[];
+extern const uint32_t   gP2Lv2CcCount;
+
+double p2_lv2_byte_value(const tP2Lv2Port * port, int byte);       // a sound byte (or CC value) as the port's value
 
 #endif // __P2_LV2_PORTS_H__
